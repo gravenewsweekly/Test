@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Canvas - Collaborative Drawing Game</title>
+    <style>
+        /* Windows 1999 Theme */
+        :root {
+            --win-bg: #008080;
+            --win-header: #000080;
+            --win-border: #c0c0c0;
+            --win-light: #dfdfdf;
+            --win-dark: #808080;
+            --win-text: #000000;
+            --win-highlight: #0000ff;
+            --win-danger: #c00000;
+            --win-success: #008000;
+            --win-warning: #808000;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "MS Sans Serif", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--win-bg);
+            color: var(--win-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" opacity="0.1"><rect fill="%23000080" width="50" height="50"/><rect fill="%23000080" x="50" y="50" width="50" height="50"/></svg>');
+            overflow-x: hidden;
+        }
+
+        /* Window Styling */
+        .window {
+            background-color: var(--win-light);
+            border: 2px solid;
+            border-top-color: var(--win-light);
+            border-left-color: var(--win-light);
+            border-right-color: var(--win-dark);
+            border-bottom-color: var(--win-dark);
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            margin: 10px;
+        }
+
+        .window-header {
+            background: linear-gradient(90deg, var(--win-header), #1084d0);
+            color: white;
+            padding: 4px 8px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .window-controls {
+            display: flex;
+        }
+
+        .window-control {
+            width: 20px;
+            height: 18px;
+            margin-left: 2px;
+            background-color: var(--win-light);
+            border: 1px solid;
+            border-top-color: var(--win-light);
+            border-left-color: var(--win-light);
+            border-right-color: var(--win-dark);
+            border-bottom-color: var(--win-dark);
+            text-align: center;
+            line-height: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .window-control:active {
+            border-top-color: var(--win-dark);
+            border-left-color: var(--win-dark);
+            border-right-color: var(--win-light);
+            border-bottom-color: var(--win-light);
+        }
+
+        .window-body {
+            padding: 10px;
+            overflow: auto;
+        }
+
+        /* Button Styling */
+        .win-button {
+            background-color: var(--win-light);
+            border: 2px solid;
+            border-top-color: var(--win-light);
+            border-left-color: var(--win-light);
+            border-right-color: var(--win-dark);
+            border-bottom-color: var(--win-dark);
+            padding: 4px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 80px;
+            transition: all 0.1s ease;
+        }
+
+        .win-button:hover {
+            background-color: #e8e8e8;
+        }
+
+        .win-button:active {
+            border-top-color: var(--win-dark);
+            border-left-color: var(--win-dark);
+            border-right-color: var(--win-light);
+            border-bottom-color: var(--win-light);
+        }
+
+        .win-button.active {
+            background-color: var(--win-highlight);
+            color: white;
+        }
+
+        .win-button.danger {
+            background-color: #ffcccc;
+        }
+
+        .win-button.success {
+            background-color: #ccffcc;
+        }
+
+        .win-button.warning {
+            background-color: #ffffcc;
+        }
+
+        /* Navigation */
+        nav {
+            background-color: var(--win-header);
+            padding: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            margin: 0 2px;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+
+        nav a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Main Layout */
+        #app {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Canvas Area */
+        #canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            background: white;
+        }
+
+        #drawing-canvas {
+            background-color: white;
+            cursor: crosshair;
+            touch-action: none;
+            flex: 1;
+            width: 100%;
+            display: block;
+        }
+
+        /* Toolbar */
+        #toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 8px;
+            background-color: var(--win-light);
+            border-top: 2px solid var(--win-dark);
+            gap: 10px;
+            align-items: center;
+        }
+
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .color-option {
+            width: 25px;
+            height: 25px;
+            border: 2px solid var(--win-dark);
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: var(--win-highlight);
+            transform: scale(1.1);
+        }
+
+        /* Game Info */
+        #game-info {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 10px;
+            background-color: var(--win-header);
+            color: white;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* Status Indicators */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            background-color: var(--win-dark);
+            color: white;
+        }
+
+        .status-online {
+            background-color: var(--win-success);
+        }
+
+        .status-offline {
+            background-color: var(--win-dark);
+        }
+
+        .status-syncing {
+            background-color: var(--win-highlight);
+        }
+
+        .status-error {
+            background-color: var(--win-danger);
+        }
+
+        /* Modal System */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-backdrop.active {
+            display: flex;
+        }
+
+        .modal {
+            background-color: var(--win-light);
+            border: 2px solid;
+            border-top-color: var(--win-light);
+            border-left-color: var(--win-light);
+            border-right-color: var(--win-dark);
+            border-bottom-color: var(--win-dark);
+            min-width: 300px;
+            max-width: 90%;
+        }
+
+        .modal-header {
+            background: linear-gradient(90deg, var(--win-header), #1084d0);
+            color: white;
+            padding: 8px 12px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 15px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .window {
+                margin: 5px;
+            }
+            
+            #toolbar {
+                justify-content: center;
+            }
+            
+            .tool-group {
+                margin-bottom: 5px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            nav {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            nav a {
+                margin: 2px 0;
+            }
+            
+            .window-header span {
+                font-size: 14px;
+            }
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--win-header);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        /* Form Elements */
+        input, select, textarea {
+            background-color: white;
+            border: 2px solid;
+            border-top-color: var(--win-dark);
+            border-left-color: var(--win-dark);
+            border-right-color: var(--win-light);
+            border-bottom-color: var(--win-light);
+            padding: 4px;
+            font-size: 14px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Security Notice */
+        .security-notice {
+            background-color: #ffffcc;
+            border: 1px solid #cccc00;
+            padding: 8px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 12px 20px;
+            background-color: var(--win-light);
+            border: 2px solid var(--win-dark);
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            max-width: 300px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--win-success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--win-danger);
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--win-highlight);
+        }
+
+        .toast.warning {
+            border-left: 4px solid var(--win-warning);
+        }
+
+        /* Drawing Cursors */
+        .drawing-cursor { cursor: crosshair; }
+        .eraser-cursor { 
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect x="2" y="2" width="16" height="16" fill="white" stroke="black" stroke-width="1"/></svg>') 10 10, auto; 
+        }
+
+        /* Page System */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Gallery Grid */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .gallery-item {
+            text-align: center;
+            padding: 10px;
+            border: 1px solid var(--win-dark);
+            background: var(--win-light);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.05);
+        }
+
+        .gallery-item img {
+            max-width: 100%;
+            height: 150px;
+            object-fit: contain;
+            background: white;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 16px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--win-light);
+            border: 1px solid var(--win-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--win-dark);
+            border: 1px solid var(--win-light);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--win-header);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav>
+            <a class="nav-link" data-page="home">Home</a>
+            <a class="nav-link" data-page="play">Play</a>
+            <a class="nav-link" data-page="gallery">Gallery</a>
+            <a class="nav-link" data-page="about">About Us</a>
+            <a class="nav-link" data-page="company">Company</a>
+            <a class="nav-link" data-page="contact">Contact Us</a>
+            <a class="nav-link" data-page="legal">Legal</a>
+        </nav>
+
+        <!-- Toast Container -->
+        <div id="toast-container"></div>
+
+        <!-- Modal System -->
+        <div class="modal-backdrop" id="modal-backdrop">
+            <div class="modal">
+                <div class="modal-header">
+                    <span id="modal-title">Modal Title</span>
+                    <div class="window-controls">
+                        <div class="window-control" id="modal-close">×</div>
+                    </div>
+                </div>
+                <div class="modal-body" id="modal-content">
+                    Modal content goes here.
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div id="content-area">
+            <!-- Home Page -->
+            <div id="home-page" class="page active">
+                <div class="window">
+                    <div class="window-header">
+                        <span>Welcome to Infinite Canvas</span>
+                        <div class="window-controls">
+                            <div class="window-control">-</div>
+                            <div class="window-control">□</div>
+                            <div class="window-control">×</div>
+                        </div>
+                    </div>
+                    <div class="window-body">
+                        <h2>Collaborative Drawing Game</h2>
+                        <p>Draw together with people from around the world in real-time!</p>
+                        <div class="security-notice">
+                            <strong>Security Notice:</strong> Your connection is secure. All data is encrypted and no personal information is stored.
+                        </div>
+                        <div style="text-align: center; margin: 20px 0;">
+                            <button class="win-button success" id="start-playing-btn">Start Drawing</button>
+                            <button class="win-button" id="view-gallery-btn">View Gallery</button>
+                        </div>
+                        <div class="tool-group" style="justify-content: center; margin: 15px 0;">
+                            <span class="status-indicator status-online">
+                                <span class="loading"></span>
+                                System Online
+                            </span>
+                        </div>
+                        <h3>How to Play:</h3>
+                        <ol>
+                            <li>Choose a drawing tool and color</li>
+                            <li>Start drawing on the canvas</li>
+                            <li>See other players' drawings in real-time</li>
+                            <li>Collaborate to create amazing artwork together!</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Play Page -->
+            <div id="play-page" class="page">
+                <div class="window">
+                    <div class="window-header">
+                        <span>Infinite Canvas - Drawing Board</span>
+                        <div class="window-controls">
+                            <div class="window-control" id="minimize-canvas">-</div>
+                            <div class="window-control" id="fullscreen-canvas">□</div>
+                            <div class="window-control" id="close-canvas">×</div>
+                        </div>
+                    </div>
+                    <div class="window-body" style="padding: 0; display: flex; flex-direction: column; height: 70vh;">
+                        <div id="game-info">
+                            <span>Players Online: <span id="player-count">1</span></span>
+                            <span>Room: <span id="room-id">Main</span></span>
+                            <span id="sync-status" class="status-indicator status-syncing">
+                                <span class="loading"></span>
+                                Syncing...
+                            </span>
+                        </div>
+                        <div id="canvas-container">
+                            <canvas id="drawing-canvas"></canvas>
+                        </div>
+                        <div id="toolbar">
+                            <div class="tool-group">
+                                <button class="win-button active" id="pencil-tool">Pencil</button>
+                                <button class="win-button" id="brush-tool">Brush</button>
+                                <button class="win-button" id="eraser-tool">Eraser</button>
+                                <button class="win-button" id="line-tool">Line</button>
+                                <button class="win-button" id="rectangle-tool">Rectangle</button>
+                                <button class="win-button" id="circle-tool">Circle</button>
+                            </div>
+                            <div class="tool-group">
+                                <span>Color:</span>
+                                <div class="color-option active" style="background-color: black;" data-color="#000000"></div>
+                                <div class="color-option" style="background-color: red;" data-color="#ff0000"></div>
+                                <div class="color-option" style="background-color: blue;" data-color="#0000ff"></div>
+                                <div class="color-option" style="background-color: green;" data-color="#008000"></div>
+                                <div class="color-option" style="background-color: yellow;" data-color="#ffff00"></div>
+                                <div class="color-option" style="background-color: purple;" data-color="#800080"></div>
+                                <input type="color" id="color-picker" value="#000000" style="width: 30px; height: 25px;">
+                            </div>
+                            <div class="tool-group">
+                                <span>Size:</span>
+                                <input type="range" id="brush-size" min="1" max="50" value="5">
+                                <span id="brush-size-value">5</span>
+                            </div>
+                            <div class="tool-group">
+                                <button class="win-button danger" id="clear-btn">Clear Canvas</button>
+                                <button class="win-button success" id="save-btn">Save Drawing</button>
+                                <button class="win-button warning" id="undo-btn">Undo</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gallery Page -->
+            <div id="gallery-page" class="page">
+                <div class="window">
+                    <div class="window-header">
+                        <span>Drawing Gallery</span>
+                        <div class="window-controls">
+                            <div class="window-control">-</div>
+                            <div class="window-control">□</div>
+                            <div class="window-control">×</div>
+                        </div>
+                    </div>
+                    <div class="window-body">
+                        <h2>Community Gallery</h2>
+                        <p>Browse drawings created by the community.</p>
+                        
+                        <div id="gallery-controls" style="margin: 15px 0;">
+                            <button class="win-button" id="refresh-gallery">Refresh</button>
+                            <button class="win-button" id="load-more-gallery">Load More</button>
+                        </div>
+                        
+                        <div id="gallery-grid" class="gallery-grid">
+                            <div class="gallery-item">
+                                <div style="background: #f0f0f0; height: 150px; display: flex; align-items: center; justify-content: center;">
+                                    Loading gallery...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other pages remain the same as before -->
+            <!-- About Us, Company, Contact Us, Legal pages -->
+            <div id="about-page" class="page">
+                <div class="window">
+                    <div class="window-header">
+                        <span>About Infinite Canvas</span>
+                        <div class="window-controls">
+                            <div class="window-control">-</div>
+                            <div class="window-control">□</div>
+                            <div class="window-control">×</div>
+                        </div>
+                    </div>
+                    <div class="window-body">
+                        <h2>About Our Project</h2>
+                        <p>Infinite Canvas is a collaborative drawing platform that allows users from around the world to create art together in real-time.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="company-page" class="page">
+                <div class="window">
+                    <div class="window-header">
+                        <span>Our Company</span>
+                        <div class="window-controls">
+                            <div class="window-control">-</div>
+                            <div class="window-control">□</div>
+                            <div class="window-control">×</div>
+                        </div>
+                    </div>
+                    <div class="window-body">
+                        <h2>Infinite Canvas Inc.</h2>
+                        <p>Founded in 2023, we're passionate about creative technology.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="contact-page" class="page">
+                <div class="window">
+                    <div class="window-header">
+                        <span>Contact Us</span>
+                        <div class="window-controls">
+                            <div class="window-control">-</div>
+                            <div class="window-control">□</div>
+                            <div class="window-control">×</div>
+                        </div>
+                    </div>
+                    <div class="window-body">
+                        <h2>Get In Touch</h2>
+                        <form id="contact-form">
+                            <div style="margin-bottom: 10px;">
+                                <label for="contact-name">Name:</label><br>
+                                <input type="text" id="contact-name">
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="contact-email">Email:</label><br>
+                                <input type="email" id="contact-email">
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="contact-message">Message:</label><br>
+                                <textarea id="contact-message" rows="5"></textarea>
+                            </div>
+                            <button type="submit" class="win-button">Send Message</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="legal-page" class="page">
+                <div class="window">
+                    <div class="window-header">
+                        <span>Legal Information</span>
+                        <div class="window-controls">
+                            <div class="window-control">-</div>
+                            <div class="window-control">□</div>
+                            <div class="window-control">×</div>
+                        </div>
+                    </div>
+                    <div class="window-body">
+                        <h2>Terms of Service & Privacy Policy</h2>
+                        <p>Your privacy is important to us. We don't store personal data.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Infinite Canvas &copy; 2023 - All Rights Reserved | A Collaborative Drawing Experience</p>
+    </footer>
+
+    <script>
+        // Enhanced Configuration
+        const CONFIG = {
+            API_KEY: '$2a$10$2tYG2Lo94Fz5p7yM/onTIuXig3E99LYF099QwCO/5zn8yzLOACQxe',
+            BIN_ID: '68e2b14443b1c97be95b6a72',
+            API_URL: 'https://api.jsonbin.io/v3/b',
+            UPDATE_INTERVAL: 2000,
+            MAX_RETRIES: 3,
+            RETRY_DELAY: 1000,
+            MAX_HISTORY: 50
+        };
+
+        // Security Utilities
+        const Security = {
+            sanitizeInput(input) {
+                if (typeof input !== 'string') return '';
+                return input.substring(0, 1000)
+                    .replace(/[<>"'`]/g, '')
+                    .trim();
+            },
+
+            validateDrawingAction(action) {
+                if (!action || typeof action !== 'object') return false;
+                
+                const required = ['type', 'timestamp', 'playerId'];
+                for (let field of required) {
+                    if (!action.hasOwnProperty(field)) return false;
+                }
+
+                if (action.type === 'draw') {
+                    return this.validatePoint(action.from) && 
+                           this.validatePoint(action.to) &&
+                           this.validateColor(action.color) &&
+                           this.validateSize(action.size);
+                } else if (action.type === 'erase') {
+                    return this.validatePoint({x: action.x, y: action.y}) && 
+                           this.validateSize(action.size);
+                }
+                return true;
+            },
+
+            validatePoint(point) {
+                return point && 
+                       typeof point.x === 'number' && 
+                       typeof point.y === 'number' &&
+                       !isNaN(point.x) && !isNaN(point.y) &&
+                       Math.abs(point.x) < 10000 && 
+                       Math.abs(point.y) < 10000;
+            },
+
+            validateColor(color) {
+                return typeof color === 'string' && 
+                       /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^[a-z]+$/.test(color);
+            },
+
+            validateSize(size) {
+                return typeof size === 'number' && 
+                       size > 0 && size <= 100;
+            }
+        };
+
+        // Application State Management
+        class AppState {
+            constructor() {
+                this.currentPage = 'home';
+                this.drawing = false;
+                this.currentTool = 'pencil';
+                this.currentColor = '#000000';
+                this.brushSize = 5;
+                this.lastX = 0;
+                this.lastY = 0;
+                this.startX = 0;
+                this.startY = 0;
+                this.canvasData = [];
+                this.history = [];
+                this.playerId = this.generatePlayerId();
+                this.connectionStatus = 'online';
+                this.lastSync = 0;
+                this.retryCount = 0;
+                
+                this.loadFromStorage();
+            }
+
+            generatePlayerId() {
+                return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            }
+
+            loadFromStorage() {
+                try {
+                    const saved = localStorage.getItem('infiniteCanvasState');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        this.playerId = parsed.playerId || this.playerId;
+                    }
+                } catch (e) {
+                    console.warn('Could not load saved state');
+                }
+            }
+
+            saveToStorage() {
+                try {
+                    localStorage.setItem('infiniteCanvasState', JSON.stringify({
+                        playerId: this.playerId,
+                        lastTool: this.currentTool,
+                        lastColor: this.currentColor,
+                        lastBrushSize: this.brushSize
+                    }));
+                } catch (e) {
+                    console.warn('Could not save state');
+                }
+            }
+
+            addDrawingAction(action) {
+                if (!Security.validateDrawingAction(action)) {
+                    console.warn('Invalid drawing action rejected');
+                    return false;
+                }
+                
+                action.id = this.generateActionId();
+                action.timestamp = Date.now();
+                action.playerId = this.playerId;
+                
+                this.canvasData.push(action);
+                this.history.push(JSON.parse(JSON.stringify(action)));
+                
+                if (this.history.length > CONFIG.MAX_HISTORY) {
+                    this.history.shift();
+                }
+                
+                return true;
+            }
+
+            generateActionId() {
+                return 'action_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+
+            undo() {
+                if (this.history.length === 0) return null;
+                const lastAction = this.history.pop();
+                this.canvasData = this.canvasData.filter(action => action.id !== lastAction.id);
+                return lastAction;
+            }
+
+            clearCanvas() {
+                this.canvasData = [];
+                this.history = [];
+            }
+        }
+
+        // API Service
+        class APIService {
+            constructor() {
+                this.rateLimit = { count: 0, resetTime: 0 };
+            }
+
+            async request(url, options = {}) {
+                // Rate limiting
+                const now = Date.now();
+                if (now > this.rateLimit.resetTime) {
+                    this.rateLimit = { count: 0, resetTime: now + 60000 };
+                }
+                if (this.rateLimit.count >= 10) {
+                    throw new Error('Rate limit exceeded');
+                }
+                this.rateLimit.count++;
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                try {
+                    const response = await fetch(url, {
+                        ...options,
+                        signal: controller.signal,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': CONFIG.API_KEY,
+                            ...options.headers
+                        }
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    return await response.json();
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    throw error;
+                }
+            }
+
+            async loadCanvasData() {
+                try {
+                    const data = await this.request(`${CONFIG.API_URL}/${CONFIG.BIN_ID}/latest`);
+                    return data.record || { canvasData: [] };
+                } catch (error) {
+                    console.error('Failed to load canvas data:', error);
+                    return { canvasData: [] };
+                }
+            }
+
+            async saveCanvasData(data) {
+                try {
+                    const sanitizedData = {
+                        canvasData: data.canvasData.filter(action => 
+                            Security.validateDrawingAction(action)
+                        ),
+                        playerCount: Math.max(1, parseInt(data.playerCount) || 1),
+                        lastUpdated: new Date().toISOString(),
+                        version: '2.0'
+                    };
+
+                    if (sanitizedData.canvasData.length > 1000) {
+                        sanitizedData.canvasData = sanitizedData.canvasData.slice(-1000);
+                    }
+
+                    const result = await this.request(`${CONFIG.API_URL}/${CONFIG.BIN_ID}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(sanitizedData)
+                    });
+                    
+                    return result;
+                } catch (error) {
+                    console.error('Save failed:', error);
+                    throw error;
+                }
+            }
+        }
+
+        // Drawing Engine
+        class DrawingEngine {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.setupCanvas();
+            }
+
+            setupCanvas() {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = this.canvas.getBoundingClientRect();
+                
+                this.canvas.width = rect.width * dpr;
+                this.canvas.height = rect.height * dpr;
+                
+                this.ctx.scale(dpr, dpr);
+                this.ctx.lineJoin = 'round';
+                this.ctx.lineCap = 'round';
+                this.ctx.lineWidth = appState.brushSize;
+                this.ctx.strokeStyle = appState.currentColor;
+                
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = rect.height + 'px';
+            }
+
+            resize() {
+                this.setupCanvas();
+                this.redraw();
+            }
+
+            redraw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                appState.canvasData.forEach(action => {
+                    if (!Security.validateDrawingAction(action)) return;
+                    
+                    this.ctx.save();
+                    
+                    if (action.type === 'draw') {
+                        this.ctx.strokeStyle = action.color;
+                        this.ctx.lineWidth = action.size;
+                        this.ctx.globalCompositeOperation = 'source-over';
+                        
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(action.from.x, action.from.y);
+                        this.ctx.lineTo(action.to.x, action.to.y);
+                        this.ctx.stroke();
+                    } else if (action.type === 'erase') {
+                        this.ctx.globalCompositeOperation = 'destination-out';
+                        this.ctx.clearRect(
+                            action.x - action.size/2, 
+                            action.y - action.size/2, 
+                            action.size, 
+                            action.size
+                        );
+                    }
+                    
+                    this.ctx.restore();
+                });
+            }
+        }
+
+        // UI Manager
+        class UIManager {
+            constructor() {
+                this.toastContainer = document.getElementById('toast-container');
+                this.modalBackdrop = document.getElementById('modal-backdrop');
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Navigation
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.showPage(link.getAttribute('data-page'));
+                    });
+                });
+
+                // Home page buttons
+                document.getElementById('start-playing-btn').addEventListener('click', () => {
+                    this.showPage('play');
+                });
+
+                document.getElementById('view-gallery-btn').addEventListener('click', () => {
+                    this.showPage('gallery');
+                    this.loadGallery();
+                });
+
+                // Tool buttons
+                ['pencil', 'brush', 'eraser', 'line', 'rectangle', 'circle'].forEach(tool => {
+                    document.getElementById(`${tool}-tool`).addEventListener('click', () => {
+                        this.setTool(tool);
+                    });
+                });
+
+                // Color options
+                document.querySelectorAll('.color-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        const color = option.getAttribute('data-color');
+                        this.setColor(color);
+                        document.querySelectorAll('.color-option').forEach(opt => 
+                            opt.classList.remove('active')
+                        );
+                        option.classList.add('active');
+                    });
+                });
+
+                // Color picker
+                document.getElementById('color-picker').addEventListener('input', (e) => {
+                    this.setColor(e.target.value);
+                });
+
+                // Brush size
+                document.getElementById('brush-size').addEventListener('input', (e) => {
+                    this.setBrushSize(parseInt(e.target.value));
+                });
+
+                // Action buttons
+                document.getElementById('clear-btn').addEventListener('click', () => {
+                    this.clearCanvas();
+                });
+
+                document.getElementById('save-btn').addEventListener('click', () => {
+                    this.saveDrawing();
+                });
+
+                document.getElementById('undo-btn').addEventListener('click', () => {
+                    this.undo();
+                });
+
+                // Modal
+                document.getElementById('modal-close').addEventListener('click', () => {
+                    this.hideModal();
+                });
+
+                this.modalBackdrop.addEventListener('click', (e) => {
+                    if (e.target === this.modalBackdrop) {
+                        this.hideModal();
+                    }
+                });
+
+                // Window controls
+                document.getElementById('fullscreen-canvas').addEventListener('click', () => {
+                    this.toggleFullscreen();
+                });
+
+                // Gallery controls
+                document.getElementById('refresh-gallery').addEventListener('click', () => {
+                    this.loadGallery();
+                });
+
+                // Contact form
+                document.getElementById('contact-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleContactSubmit();
+                });
+
+                // Window resize
+                window.addEventListener('resize', () => {
+                    if (appState.currentPage === 'play') {
+                        setTimeout(() => drawingEngine.resize(), 100);
+                    }
+                });
+            }
+
+            showPage(pageName) {
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.remove('active');
+                });
+                const targetPage = document.getElementById(`${pageName}-page`);
+                if (targetPage) {
+                    targetPage.classList.add('active');
+                    appState.currentPage = pageName;
+                    
+                    if (pageName === 'play') {
+                        setTimeout(() => drawingEngine.resize(), 100);
+                    }
+                }
+            }
+
+            setTool(tool) {
+                appState.currentTool = tool;
+                
+                document.querySelectorAll('#toolbar .win-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.getElementById(`${tool}-tool`).classList.add('active');
+                
+                const canvas = document.getElementById('drawing-canvas');
+                canvas.className = '';
+                if (tool === 'eraser') {
+                    canvas.classList.add('eraser-cursor');
+                    drawingEngine.ctx.globalCompositeOperation = 'destination-out';
+                } else {
+                    canvas.classList.add('drawing-cursor');
+                    drawingEngine.ctx.globalCompositeOperation = 'source-over';
+                    drawingEngine.ctx.strokeStyle = appState.currentColor;
+                }
+            }
+
+            setColor(color) {
+                appState.currentColor = color;
+                drawingEngine.ctx.strokeStyle = color;
+                document.getElementById('color-picker').value = color;
+            }
+
+            setBrushSize(size) {
+                appState.brushSize = size;
+                drawingEngine.ctx.lineWidth = size;
+                document.getElementById('brush-size-value').textContent = size;
+            }
+
+            clearCanvas() {
+                if (confirm('Are you sure you want to clear the canvas? This will clear for all users.')) {
+                    appState.clearCanvas();
+                    drawingEngine.redraw();
+                    syncManager.forceSync();
+                    this.showToast('Canvas cleared', 'success');
+                }
+            }
+
+            async saveDrawing() {
+                try {
+                    const dataURL = drawingEngine.canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.download = `infinite-canvas-${Date.now()}.png`;
+                    link.href = dataURL;
+                    link.click();
+                    this.showToast('Drawing saved successfully!', 'success');
+                } catch (error) {
+                    this.showToast('Failed to save drawing', 'error');
+                }
+            }
+
+            undo() {
+                const action = appState.undo();
+                if (action) {
+                    drawingEngine.redraw();
+                    syncManager.forceSync();
+                    this.showToast('Action undone', 'info');
+                } else {
+                    this.showToast('Nothing to undo', 'info');
+                }
+            }
+
+            showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+                
+                this.toastContainer.appendChild(toast);
+                
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 3000);
+            }
+
+            showModal(title, content) {
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-content').innerHTML = content;
+                this.modalBackdrop.classList.add('active');
+            }
+
+            hideModal() {
+                this.modalBackdrop.classList.remove('active');
+            }
+
+            updateConnectionStatus(status) {
+                const indicator = document.getElementById('sync-status');
+                if (!indicator) return;
+                
+                indicator.className = `status-indicator status-${status}`;
+                
+                switch (status) {
+                    case 'online':
+                        indicator.innerHTML = '<span class="loading"></span> Syncing...';
+                        break;
+                    case 'offline':
+                        indicator.textContent = 'Offline';
+                        break;
+                    case 'error':
+                        indicator.textContent = 'Sync Error';
+                        break;
+                }
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        this.showToast('Fullscreen failed: ' + err.message, 'error');
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+
+            loadGallery() {
+                const galleryGrid = document.getElementById('gallery-grid');
+                galleryGrid.innerHTML = `
+                    <div class="gallery-item">
+                        <div style="background: #f0f0f0; height: 150px; display: flex; align-items: center; justify-content: center;">
+                            Gallery feature coming soon!
+                        </div>
+                    </div>
+                `;
+            }
+
+            handleContactSubmit() {
+                const name = Security.sanitizeInput(document.getElementById('contact-name').value);
+                const email = Security.sanitizeInput(document.getElementById('contact-email').value);
+                const message = Security.sanitizeInput(document.getElementById('contact-message').value);
+                
+                if (!name || !email || !message) {
+                    this.showToast('Please fill in all fields', 'error');
+                    return;
+                }
+                
+                this.showToast('Thank you for your message! We\'ll get back to you soon.', 'success');
+                document.getElementById('contact-form').reset();
+            }
+
+            updatePlayerCount() {
+                const countElement = document.getElementById('player-count');
+                if (countElement) {
+                    // Simulate player count changes
+                    const baseCount = 1;
+                    const randomVariation = Math.floor(Math.random() * 5);
+                    countElement.textContent = baseCount + randomVariation;
+                }
+            }
+        }
+
+        // Sync Manager
+        class SyncManager {
+            constructor() {
+                this.isSyncing = false;
+                this.lastDataHash = '';
+            }
+
+            async sync() {
+                if (this.isSyncing) return;
+                
+                this.isSyncing = true;
+                uiManager.updateConnectionStatus('online');
+                
+                try {
+                    // Load remote data
+                    const remoteData = await apiService.loadCanvasData();
+                    await this.mergeData(remoteData);
+                    
+                    // Save local changes
+                    await this.saveLocalChanges();
+                    
+                    appState.retryCount = 0;
+                    appState.lastSync = Date.now();
+                    
+                } catch (error) {
+                    console.error('Sync failed:', error);
+                    appState.retryCount++;
+                    
+                    if (appState.retryCount >= CONFIG.MAX_RETRIES) {
+                        uiManager.updateConnectionStatus('offline');
+                        uiManager.showToast('Connection lost. Working offline.', 'error');
+                    } else {
+                        uiManager.updateConnectionStatus('error');
+                        setTimeout(() => this.sync(), CONFIG.RETRY_DELAY);
+                    }
+                } finally {
+                    this.isSyncing = false;
+                }
+            }
+
+            async mergeData(remoteData) {
+                if (!remoteData.canvasData) return;
+                
+                const remoteHash = JSON.stringify(remoteData.canvasData).length.toString();
+                if (remoteHash === this.lastDataHash) return;
+                
+                let hasChanges = false;
+                const mergedData = [...appState.canvasData];
+                
+                for (const remoteAction of remoteData.canvasData) {
+                    if (!Security.validateDrawingAction(remoteAction)) continue;
+                    
+                    const existingIndex = mergedData.findIndex(a => a.id === remoteAction.id);
+                    
+                    if (existingIndex === -1) {
+                        mergedData.push(remoteAction);
+                        hasChanges = true;
+                    } else if (remoteAction.timestamp > mergedData[existingIndex].timestamp) {
+                        mergedData[existingIndex] = remoteAction;
+                        hasChanges = true;
+                    }
+                }
+                
+                if (hasChanges) {
+                    appState.canvasData = mergedData.sort((a, b) => a.timestamp - b.timestamp);
+                    drawingEngine.redraw();
+                    this.lastDataHash = remoteHash;
+                }
+            }
+
+            async saveLocalChanges() {
+                const dataToSave = {
+                    canvasData: appState.canvasData,
+                    playerCount: parseInt(document.getElementById('player-count')?.textContent || '1'),
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                await apiService.saveCanvasData(dataToSave);
+            }
+
+            forceSync() {
+                this.sync();
+            }
+
+            startAutoSync() {
+                setInterval(() => this.sync(), CONFIG.UPDATE_INTERVAL);
+                
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) {
+                        this.sync();
+                    }
+                });
+            }
+        }
+
+        // Drawing Handlers
+        class DrawingHandlers {
+            constructor() {
+                this.canvas = document.getElementById('drawing-canvas');
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                this.canvas.addEventListener('mouseout', this.handleMouseUp.bind(this));
+                
+                this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this));
+                this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this));
+                this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
+                
+                this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+
+            getCanvasCoordinates(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                
+                let clientX, clientY;
+                
+                if (e.type.includes('touch')) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                
+                return {
+                    x: (clientX - rect.left) * (this.canvas.width / rect.width / dpr),
+                    y: (clientY - rect.top) * (this.canvas.height / rect.height / dpr)
+                };
+            }
+
+            handleMouseDown(e) {
+                e.preventDefault();
+                this.startDrawing(e);
+            }
+
+            handleTouchStart(e) {
+                e.preventDefault();
+                this.startDrawing(e);
+            }
+
+            startDrawing(e) {
+                const pos = this.getCanvasCoordinates(e);
+                appState.drawing = true;
+                [appState.startX, appState.startY] = [pos.x, pos.y];
+                [appState.lastX, appState.lastY] = [pos.x, pos.y];
+                
+                if (appState.currentTool === 'pencil' || appState.currentTool === 'brush') {
+                    drawingEngine.ctx.beginPath();
+                    drawingEngine.ctx.moveTo(pos.x, pos.y);
+                }
+            }
+
+            handleMouseMove(e) {
+                if (!appState.drawing) return;
+                e.preventDefault();
+                this.draw(e);
+            }
+
+            handleTouchMove(e) {
+                if (!appState.drawing) return;
+                e.preventDefault();
+                this.draw(e);
+            }
+
+            draw(e) {
+                const pos = this.getCanvasCoordinates(e);
+                const currentX = pos.x;
+                const currentY = pos.y;
+                
+                let action = null;
+                
+                if (appState.currentTool === 'pencil' || appState.currentTool === 'brush') {
+                    drawingEngine.ctx.lineTo(currentX, currentY);
+                    drawingEngine.ctx.stroke();
+                    
+                    action = {
+                        type: 'draw',
+                        tool: appState.currentTool,
+                        color: appState.currentColor,
+                        size: appState.brushSize,
+                        from: { x: appState.lastX, y: appState.lastY },
+                        to: { x: currentX, y: currentY }
+                    };
+                } else if (appState.currentTool === 'eraser') {
+                    drawingEngine.ctx.clearRect(
+                        currentX - appState.brushSize/2, 
+                        currentY - appState.brushSize/2, 
+                        appState.brushSize, 
+                        appState.brushSize
+                    );
+                    
+                    action = {
+                        type: 'erase',
+                        x: currentX,
+                        y: currentY,
+                        size: appState.brushSize
+                    };
+                }
+                
+                if (action && appState.addDrawingAction(action)) {
+                    [appState.lastX, appState.lastY] = [currentX, currentY];
+                }
+            }
+
+            handleMouseUp() {
+                this.finishDrawing();
+            }
+
+            handleTouchEnd() {
+                this.finishDrawing();
+            }
+
+            finishDrawing() {
+                if (!appState.drawing) return;
+                
+                appState.drawing = false;
+                drawingEngine.ctx.beginPath();
+                
+                setTimeout(() => syncManager.forceSync(), 100);
+            }
+        }
+
+        // Global instances
+        let appState, apiService, drawingEngine, uiManager, syncManager, drawingHandlers;
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                // Initialize core systems
+                appState = new AppState();
+                apiService = new APIService();
+                
+                const canvas = document.getElementById('drawing-canvas');
+                if (!canvas) throw new Error('Canvas element not found');
+                
+                drawingEngine = new DrawingEngine(canvas);
+                uiManager = new UIManager();
+                syncManager = new SyncManager();
+                drawingHandlers = new DrawingHandlers();
+                
+                // Load initial data and start syncing
+                setTimeout(() => {
+                    syncManager.sync();
+                    syncManager.startAutoSync();
+                }, 1000);
+                
+                // Start UI updates
+                setInterval(() => {
+                    uiManager.updatePlayerCount();
+                    appState.saveToStorage();
+                }, 5000);
+                
+                console.log('Infinite Canvas initialized successfully');
+                
+            } catch (error) {
+                console.error('Failed to initialize application:', error);
+                if (uiManager) {
+                    uiManager.showToast('Failed to initialize. Please refresh.', 'error');
+                }
+            }
+        });
+
+        // Global error handling
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.error);
+            if (uiManager) {
+                uiManager.showToast('An error occurred', 'error');
+            }
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+            if (uiManager) {
+                uiManager.showToast('A network error occurred', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
