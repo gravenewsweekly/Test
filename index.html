@@ -1,1583 +1,715 @@
+<!-- save-as: infinitecanvas_singlefile.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Infinite Canvas - Collaborative Drawing Game</title>
-    <style>
-        /* Windows 1999 Theme */
-        :root {
-            --win-bg: #008080;
-            --win-header: #000080;
-            --win-border: #c0c0c0;
-            --win-light: #dfdfdf;
-            --win-dark: #808080;
-            --win-text: #000000;
-            --win-highlight: #0000ff;
-            --win-danger: #c00000;
-            --win-success: #008000;
-            --win-warning: #808000;
-        }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Infinite Canvas — Creative Workspace</title>
+<meta name="description" content="InfiniteCanvas.org — secure, responsive infinite drawing canvas with autosave, versioning, and optional client-side encryption."/>
+<style>
+/* ---------- Windows 98/XP Classic Theme ---------- */
+:root{
+  --window-bg:#c0c0c0;
+  --taskbar:#000080;
+  --panel:#e0e0e0;
+  --btn-face:#c0c0c0;
+  --btn-border:#ffffff;
+  --accent:#000080;
+  --muted:#666;
+  --max-width:1100px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Tahoma, "Segoe UI", Arial, sans-serif;background:var(--window-bg);color:#111}
+.container{max-width:var(--max-width);margin:12px auto;padding:12px}
+.header{background:var(--taskbar);color:white;padding:8px 12px;border:3px solid #000;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:20px;margin:0}
+.nav a{color:#fff;text-decoration:none;margin:0 8px;font-weight:600}
+.main{display:grid;grid-template-columns: 1fr 360px;gap:12px;margin-top:12px}
+@media (max-width:980px){.main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:2px solid #808080;padding:10px;border-radius:4px;box-shadow:2px 2px 0 #fff inset}
+.canvas-wrap{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.canvas-toolbar{display:flex;flex-wrap:wrap;gap:6px}
+button, input[type="button"], input[type="submit"]{
+  font-family:Tahoma; background:var(--btn-face); border:2px outset var(--btn-border);
+  padding:6px 10px;border-radius:3px;cursor:pointer; font-weight:600;
+}
+button:active{border-style:inset}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+small.muted{color:var(--muted)}
+canvas#canvas{width:100%;height:480px;border:3px solid var(--accent);background:#ffffff;touch-action:none}
+.info-box{font-size:13px;color:#222;background:#f7f7f7;padding:8px;border:1px solid #ddd;border-left:4px solid var(--accent)}
+.footer{background:var(--taskbar);color:white;padding:10px;margin-top:12px;text-align:center;border-top:4px solid #000}
+.section-title{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.hr{height:1px;background:#9aa; margin:12px 0}
+.logo-win{width:36px;height:24px;background:linear-gradient(90deg,#fff,#eee);border:1px solid #000;padding:2px;display:inline-block}
+.form-row{margin-bottom:8px}
+input[type="text"], input[type="email"], textarea, select {
+  width:100%; padding:8px;border:2px inset #fff;background:#fff;border-radius:2px;font-size:14px
+}
+textarea{min-height:110px;resize:vertical}
+.small{font-size:13px;color:#333}
+.badge{display:inline-block;padding:4px 6px;border-radius:4px;background:#fff;border:1px solid #999;font-weight:700}
+.nav-pages{margin-top:6px}
+.page{display:none}
+.page.active{display:block}
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "MS Sans Serif", Arial, sans-serif;
-        }
+/* Windows style box for company details */
+.company-box{border:2px solid #808080;padding:10px;background:#f0f0f0}
+.team-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (max-width:600px){.team-grid{grid-template-columns:1fr}}
 
-        body {
-            background-color: var(--win-bg);
-            color: var(--win-text);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" opacity="0.1"><rect fill="%23000080" width="50" height="50"/><rect fill="%23000080" x="50" y="50" width="50" height="50"/></svg>');
-            overflow-x: hidden;
-        }
+/* Legal table */
+.legal-list{list-style: none;padding-left:0;margin:0}
+.legal-list li{padding:6px 0;border-bottom:1px dashed #ddd}
 
-        /* Window Styling */
-        .window {
-            background-color: var(--win-light);
-            border: 2px solid;
-            border-top-color: var(--win-light);
-            border-left-color: var(--win-light);
-            border-right-color: var(--win-dark);
-            border-bottom-color: var(--win-dark);
-            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-            margin: 10px;
-        }
-
-        .window-header {
-            background: linear-gradient(90deg, var(--win-header), #1084d0);
-            color: white;
-            padding: 4px 8px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            user-select: none;
-        }
-
-        .window-controls {
-            display: flex;
-        }
-
-        .window-control {
-            width: 20px;
-            height: 18px;
-            margin-left: 2px;
-            background-color: var(--win-light);
-            border: 1px solid;
-            border-top-color: var(--win-light);
-            border-left-color: var(--win-light);
-            border-right-color: var(--win-dark);
-            border-bottom-color: var(--win-dark);
-            text-align: center;
-            line-height: 14px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .window-control:active {
-            border-top-color: var(--win-dark);
-            border-left-color: var(--win-dark);
-            border-right-color: var(--win-light);
-            border-bottom-color: var(--win-light);
-        }
-
-        .window-body {
-            padding: 10px;
-            overflow: auto;
-        }
-
-        /* Button Styling */
-        .win-button {
-            background-color: var(--win-light);
-            border: 2px solid;
-            border-top-color: var(--win-light);
-            border-left-color: var(--win-light);
-            border-right-color: var(--win-dark);
-            border-bottom-color: var(--win-dark);
-            padding: 4px 12px;
-            font-size: 14px;
-            cursor: pointer;
-            min-width: 80px;
-            transition: all 0.1s ease;
-        }
-
-        .win-button:hover {
-            background-color: #e8e8e8;
-        }
-
-        .win-button:active {
-            border-top-color: var(--win-dark);
-            border-left-color: var(--win-dark);
-            border-right-color: var(--win-light);
-            border-bottom-color: var(--win-light);
-        }
-
-        .win-button.active {
-            background-color: var(--win-highlight);
-            color: white;
-        }
-
-        .win-button.danger {
-            background-color: #ffcccc;
-        }
-
-        .win-button.success {
-            background-color: #ccffcc;
-        }
-
-        .win-button.warning {
-            background-color: #ffffcc;
-        }
-
-        /* Navigation */
-        nav {
-            background-color: var(--win-header);
-            padding: 5px;
-            display: flex;
-            flex-wrap: wrap;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        nav a {
-            color: white;
-            text-decoration: none;
-            padding: 5px 10px;
-            margin: 0 2px;
-            border: 1px solid transparent;
-            cursor: pointer;
-        }
-
-        nav a:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        /* Main Layout */
-        #app {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Canvas Area */
-        #canvas-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-            background: white;
-        }
-
-        #drawing-canvas {
-            background-color: white;
-            cursor: crosshair;
-            touch-action: none;
-            flex: 1;
-            width: 100%;
-            display: block;
-        }
-
-        /* Toolbar */
-        #toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            padding: 8px;
-            background-color: var(--win-light);
-            border-top: 2px solid var(--win-dark);
-            gap: 10px;
-            align-items: center;
-        }
-
-        .tool-group {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .color-option {
-            width: 25px;
-            height: 25px;
-            border: 2px solid var(--win-dark);
-            cursor: pointer;
-            transition: transform 0.1s ease;
-        }
-
-        .color-option:hover {
-            transform: scale(1.1);
-        }
-
-        .color-option.active {
-            border-color: var(--win-highlight);
-            transform: scale(1.1);
-        }
-
-        /* Game Info */
-        #game-info {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 10px;
-            background-color: var(--win-header);
-            color: white;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        /* Status Indicators */
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-size: 12px;
-            background-color: var(--win-dark);
-            color: white;
-        }
-
-        .status-online {
-            background-color: var(--win-success);
-        }
-
-        .status-offline {
-            background-color: var(--win-dark);
-        }
-
-        .status-syncing {
-            background-color: var(--win-highlight);
-        }
-
-        .status-error {
-            background-color: var(--win-danger);
-        }
-
-        /* Modal System */
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-backdrop.active {
-            display: flex;
-        }
-
-        .modal {
-            background-color: var(--win-light);
-            border: 2px solid;
-            border-top-color: var(--win-light);
-            border-left-color: var(--win-light);
-            border-right-color: var(--win-dark);
-            border-bottom-color: var(--win-dark);
-            min-width: 300px;
-            max-width: 90%;
-        }
-
-        .modal-header {
-            background: linear-gradient(90deg, var(--win-header), #1084d0);
-            color: white;
-            padding: 8px 12px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-body {
-            padding: 15px;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .window {
-                margin: 5px;
-            }
-            
-            #toolbar {
-                justify-content: center;
-            }
-            
-            .tool-group {
-                margin-bottom: 5px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            nav {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            nav a {
-                margin: 2px 0;
-            }
-            
-            .window-header span {
-                font-size: 14px;
-            }
-        }
-
-        /* Footer */
-        footer {
-            background-color: var(--win-header);
-            color: white;
-            text-align: center;
-            padding: 10px;
-            font-size: 12px;
-        }
-
-        /* Form Elements */
-        input, select, textarea {
-            background-color: white;
-            border: 2px solid;
-            border-top-color: var(--win-dark);
-            border-left-color: var(--win-dark);
-            border-right-color: var(--win-light);
-            border-bottom-color: var(--win-light);
-            padding: 4px;
-            font-size: 14px;
-            width: 100%;
-            max-width: 300px;
-        }
-
-        /* Loading Animation */
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Security Notice */
-        .security-notice {
-            background-color: #ffffcc;
-            border: 1px solid #cccc00;
-            padding: 8px;
-            margin: 10px 0;
-            font-size: 12px;
-        }
-
-        /* Toast Notifications */
-        #toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1001;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .toast {
-            padding: 12px 20px;
-            background-color: var(--win-light);
-            border: 2px solid var(--win-dark);
-            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            max-width: 300px;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        .toast.success {
-            border-left: 4px solid var(--win-success);
-        }
-
-        .toast.error {
-            border-left: 4px solid var(--win-danger);
-        }
-
-        .toast.info {
-            border-left: 4px solid var(--win-highlight);
-        }
-
-        .toast.warning {
-            border-left: 4px solid var(--win-warning);
-        }
-
-        /* Drawing Cursors */
-        .drawing-cursor { cursor: crosshair; }
-        .eraser-cursor { 
-            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect x="2" y="2" width="16" height="16" fill="white" stroke="black" stroke-width="1"/></svg>') 10 10, auto; 
-        }
-
-        /* Page System */
-        .page {
-            display: none;
-        }
-
-        .page.active {
-            display: block;
-        }
-
-        /* Gallery Grid */
-        .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        .gallery-item {
-            text-align: center;
-            padding: 10px;
-            border: 1px solid var(--win-dark);
-            background: var(--win-light);
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-
-        .gallery-item:hover {
-            transform: scale(1.05);
-        }
-
-        .gallery-item img {
-            max-width: 100%;
-            height: 150px;
-            object-fit: contain;
-            background: white;
-        }
-
-        /* Scrollbar Styling */
-        ::-webkit-scrollbar {
-            width: 16px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--win-light);
-            border: 1px solid var(--win-dark);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--win-dark);
-            border: 1px solid var(--win-light);
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--win-header);
-        }
-    </style>
+/* subtle focus */
+:focus{outline:3px solid rgba(0,0,128,0.15);outline-offset:2px}
+.status{font-weight:700;font-size:13px}
+</style>
 </head>
 <body>
-    <div id="app">
-        <!-- Navigation -->
-        <nav>
-            <a class="nav-link" data-page="home">Home</a>
-            <a class="nav-link" data-page="play">Play</a>
-            <a class="nav-link" data-page="gallery">Gallery</a>
-            <a class="nav-link" data-page="about">About Us</a>
-            <a class="nav-link" data-page="company">Company</a>
-            <a class="nav-link" data-page="contact">Contact Us</a>
-            <a class="nav-link" data-page="legal">Legal</a>
-        </nav>
-
-        <!-- Toast Container -->
-        <div id="toast-container"></div>
-
-        <!-- Modal System -->
-        <div class="modal-backdrop" id="modal-backdrop">
-            <div class="modal">
-                <div class="modal-header">
-                    <span id="modal-title">Modal Title</span>
-                    <div class="window-controls">
-                        <div class="window-control" id="modal-close">×</div>
-                    </div>
-                </div>
-                <div class="modal-body" id="modal-content">
-                    Modal content goes here.
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content Area -->
-        <div id="content-area">
-            <!-- Home Page -->
-            <div id="home-page" class="page active">
-                <div class="window">
-                    <div class="window-header">
-                        <span>Welcome to Infinite Canvas</span>
-                        <div class="window-controls">
-                            <div class="window-control">-</div>
-                            <div class="window-control">□</div>
-                            <div class="window-control">×</div>
-                        </div>
-                    </div>
-                    <div class="window-body">
-                        <h2>Collaborative Drawing Game</h2>
-                        <p>Draw together with people from around the world in real-time!</p>
-                        <div class="security-notice">
-                            <strong>Security Notice:</strong> Your connection is secure. All data is encrypted and no personal information is stored.
-                        </div>
-                        <div style="text-align: center; margin: 20px 0;">
-                            <button class="win-button success" id="start-playing-btn">Start Drawing</button>
-                            <button class="win-button" id="view-gallery-btn">View Gallery</button>
-                        </div>
-                        <div class="tool-group" style="justify-content: center; margin: 15px 0;">
-                            <span class="status-indicator status-online">
-                                <span class="loading"></span>
-                                System Online
-                            </span>
-                        </div>
-                        <h3>How to Play:</h3>
-                        <ol>
-                            <li>Choose a drawing tool and color</li>
-                            <li>Start drawing on the canvas</li>
-                            <li>See other players' drawings in real-time</li>
-                            <li>Collaborate to create amazing artwork together!</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Play Page -->
-            <div id="play-page" class="page">
-                <div class="window">
-                    <div class="window-header">
-                        <span>Infinite Canvas - Drawing Board</span>
-                        <div class="window-controls">
-                            <div class="window-control" id="minimize-canvas">-</div>
-                            <div class="window-control" id="fullscreen-canvas">□</div>
-                            <div class="window-control" id="close-canvas">×</div>
-                        </div>
-                    </div>
-                    <div class="window-body" style="padding: 0; display: flex; flex-direction: column; height: 70vh;">
-                        <div id="game-info">
-                            <span>Players Online: <span id="player-count">1</span></span>
-                            <span>Room: <span id="room-id">Main</span></span>
-                            <span id="sync-status" class="status-indicator status-syncing">
-                                <span class="loading"></span>
-                                Syncing...
-                            </span>
-                        </div>
-                        <div id="canvas-container">
-                            <canvas id="drawing-canvas"></canvas>
-                        </div>
-                        <div id="toolbar">
-                            <div class="tool-group">
-                                <button class="win-button active" id="pencil-tool">Pencil</button>
-                                <button class="win-button" id="brush-tool">Brush</button>
-                                <button class="win-button" id="eraser-tool">Eraser</button>
-                                <button class="win-button" id="line-tool">Line</button>
-                                <button class="win-button" id="rectangle-tool">Rectangle</button>
-                                <button class="win-button" id="circle-tool">Circle</button>
-                            </div>
-                            <div class="tool-group">
-                                <span>Color:</span>
-                                <div class="color-option active" style="background-color: black;" data-color="#000000"></div>
-                                <div class="color-option" style="background-color: red;" data-color="#ff0000"></div>
-                                <div class="color-option" style="background-color: blue;" data-color="#0000ff"></div>
-                                <div class="color-option" style="background-color: green;" data-color="#008000"></div>
-                                <div class="color-option" style="background-color: yellow;" data-color="#ffff00"></div>
-                                <div class="color-option" style="background-color: purple;" data-color="#800080"></div>
-                                <input type="color" id="color-picker" value="#000000" style="width: 30px; height: 25px;">
-                            </div>
-                            <div class="tool-group">
-                                <span>Size:</span>
-                                <input type="range" id="brush-size" min="1" max="50" value="5">
-                                <span id="brush-size-value">5</span>
-                            </div>
-                            <div class="tool-group">
-                                <button class="win-button danger" id="clear-btn">Clear Canvas</button>
-                                <button class="win-button success" id="save-btn">Save Drawing</button>
-                                <button class="win-button warning" id="undo-btn">Undo</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Gallery Page -->
-            <div id="gallery-page" class="page">
-                <div class="window">
-                    <div class="window-header">
-                        <span>Drawing Gallery</span>
-                        <div class="window-controls">
-                            <div class="window-control">-</div>
-                            <div class="window-control">□</div>
-                            <div class="window-control">×</div>
-                        </div>
-                    </div>
-                    <div class="window-body">
-                        <h2>Community Gallery</h2>
-                        <p>Browse drawings created by the community.</p>
-                        
-                        <div id="gallery-controls" style="margin: 15px 0;">
-                            <button class="win-button" id="refresh-gallery">Refresh</button>
-                            <button class="win-button" id="load-more-gallery">Load More</button>
-                        </div>
-                        
-                        <div id="gallery-grid" class="gallery-grid">
-                            <div class="gallery-item">
-                                <div style="background: #f0f0f0; height: 150px; display: flex; align-items: center; justify-content: center;">
-                                    Loading gallery...
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Other pages remain the same as before -->
-            <!-- About Us, Company, Contact Us, Legal pages -->
-            <div id="about-page" class="page">
-                <div class="window">
-                    <div class="window-header">
-                        <span>About Infinite Canvas</span>
-                        <div class="window-controls">
-                            <div class="window-control">-</div>
-                            <div class="window-control">□</div>
-                            <div class="window-control">×</div>
-                        </div>
-                    </div>
-                    <div class="window-body">
-                        <h2>About Our Project</h2>
-                        <p>Infinite Canvas is a collaborative drawing platform that allows users from around the world to create art together in real-time.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="company-page" class="page">
-                <div class="window">
-                    <div class="window-header">
-                        <span>Our Company</span>
-                        <div class="window-controls">
-                            <div class="window-control">-</div>
-                            <div class="window-control">□</div>
-                            <div class="window-control">×</div>
-                        </div>
-                    </div>
-                    <div class="window-body">
-                        <h2>Infinite Canvas Inc.</h2>
-                        <p>Founded in 2023, we're passionate about creative technology.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="contact-page" class="page">
-                <div class="window">
-                    <div class="window-header">
-                        <span>Contact Us</span>
-                        <div class="window-controls">
-                            <div class="window-control">-</div>
-                            <div class="window-control">□</div>
-                            <div class="window-control">×</div>
-                        </div>
-                    </div>
-                    <div class="window-body">
-                        <h2>Get In Touch</h2>
-                        <form id="contact-form">
-                            <div style="margin-bottom: 10px;">
-                                <label for="contact-name">Name:</label><br>
-                                <input type="text" id="contact-name">
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="contact-email">Email:</label><br>
-                                <input type="email" id="contact-email">
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="contact-message">Message:</label><br>
-                                <textarea id="contact-message" rows="5"></textarea>
-                            </div>
-                            <button type="submit" class="win-button">Send Message</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <div id="legal-page" class="page">
-                <div class="window">
-                    <div class="window-header">
-                        <span>Legal Information</span>
-                        <div class="window-controls">
-                            <div class="window-control">-</div>
-                            <div class="window-control">□</div>
-                            <div class="window-control">×</div>
-                        </div>
-                    </div>
-                    <div class="window-body">
-                        <h2>Terms of Service & Privacy Policy</h2>
-                        <p>Your privacy is important to us. We don't store personal data.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="container" role="main">
+  <header class="header" role="banner">
+    <div style="display:flex;gap:10px;align-items:center">
+      <span class="logo-win" aria-hidden="true"></span>
+      <div>
+        <h1 style="margin:0">InfiniteCanvas</h1>
+        <div style="font-size:12px;color:#fff;opacity:0.95">Secure • Responsive • Versioned</div>
+      </div>
     </div>
+    <nav class="nav" role="navigation" aria-label="Main navigation">
+      <span class="nav-pages">
+        <a href="#" onclick="showPage('home')">Home</a>
+        <a href="#" onclick="showPage('about')">About Us</a>
+        <a href="#" onclick="showPage('company')">Company</a>
+        <a href="#" onclick="showPage('contact')">Contact</a>
+        <a href="#" onclick="showPage('legal')">Legal</a>
+      </span>
+    </nav>
+  </header>
 
-    <footer>
-        <p>Infinite Canvas &copy; 2023 - All Rights Reserved | A Collaborative Drawing Experience</p>
-    </footer>
+  <main class="main" role="main">
+    <!-- Left column: canvas and pages -->
+    <section>
+      <div id="home" class="page active panel" aria-labelledby="home-title">
+        <div class="section-title"><h2 id="home-title" style="margin:0">Infinite Canvas — Workspace</h2></div>
 
-    <script>
-        // Enhanced Configuration
-        const CONFIG = {
-            API_KEY: '$2a$10$2tYG2Lo94Fz5p7yM/onTIuXig3E99LYF099QwCO/5zn8yzLOACQxe',
-            BIN_ID: '68e2b14443b1c97be95b6a72',
-            API_URL: 'https://api.jsonbin.io/v3/b',
-            UPDATE_INTERVAL: 2000,
-            MAX_RETRIES: 3,
-            RETRY_DELAY: 1000,
-            MAX_HISTORY: 50
-        };
+        <div class="canvas-wrap">
+          <div class="canvas-toolbar">
+            <div class="controls">
+              <button id="undoBtn" title="Undo (latest)" onclick="undoCanvas()">Undo</button>
+              <button id="redoBtn" title="Redo" onclick="redoCanvas()">Redo</button>
+              <button onclick="clearCanvas()" title="Clear canvas (saves history)">Clear</button>
+              <button id="saveBtn" onclick="manualSave()" title="Manually save now">Save</button>
 
-        // Security Utilities
-        const Security = {
-            sanitizeInput(input) {
-                if (typeof input !== 'string') return '';
-                return input.substring(0, 1000)
-                    .replace(/[<>"'`]/g, '')
-                    .trim();
-            },
+              <label class="small" style="align-self:center">Brush:
+                <select id="brushSize" onchange="changeBrush(this.value)">
+                  <option value="2">2px</option>
+                  <option value="4" selected>4px</option>
+                  <option value="8">8px</option>
+                  <option value="12">12px</option>
+                </select>
+              </label>
 
-            validateDrawingAction(action) {
-                if (!action || typeof action !== 'object') return false;
-                
-                const required = ['type', 'timestamp', 'playerId'];
-                for (let field of required) {
-                    if (!action.hasOwnProperty(field)) return false;
-                }
+              <label class="small">Opacity:
+                <select id="brushAlpha" onchange="changeAlpha(this.value)">
+                  <option value="1">100%</option>
+                  <option value="0.75">75%</option>
+                  <option value="0.5">50%</option>
+                </select>
+              </label>
 
-                if (action.type === 'draw') {
-                    return this.validatePoint(action.from) && 
-                           this.validatePoint(action.to) &&
-                           this.validateColor(action.color) &&
-                           this.validateSize(action.size);
-                } else if (action.type === 'erase') {
-                    return this.validatePoint({x: action.x, y: action.y}) && 
-                           this.validateSize(action.size);
-                }
-                return true;
-            },
+              <label class="small">Color:
+                <input type="color" id="brushColor" value="#000000" onchange="changeColor(this.value)">
+              </label>
 
-            validatePoint(point) {
-                return point && 
-                       typeof point.x === 'number' && 
-                       typeof point.y === 'number' &&
-                       !isNaN(point.x) && !isNaN(point.y) &&
-                       Math.abs(point.x) < 10000 && 
-                       Math.abs(point.y) < 10000;
-            },
+            </div>
 
-            validateColor(color) {
-                return typeof color === 'string' && 
-                       /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^[a-z]+$/.test(color);
-            },
+            <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+              <label class="small muted">Encrypt saves:</label>
+              <input id="encryptToggle" type="checkbox" aria-label="Encrypt saves"/>
+              <input id="encryptPass" type="text" placeholder="passphrase (optional)" style="width:180px" />
+            </div>
+          </div>
 
-            validateSize(size) {
-                return typeof size === 'number' && 
-                       size > 0 && size <= 100;
-            }
-        };
+          <div style="margin-top:6px;" class="panel">
+            <canvas id="canvas" width="1400" height="900" aria-label="Drawing canvas"></canvas>
+          </div>
 
-        // Application State Management
-        class AppState {
-            constructor() {
-                this.currentPage = 'home';
-                this.drawing = false;
-                this.currentTool = 'pencil';
-                this.currentColor = '#000000';
-                this.brushSize = 5;
-                this.lastX = 0;
-                this.lastY = 0;
-                this.startX = 0;
-                this.startY = 0;
-                this.canvasData = [];
-                this.history = [];
-                this.playerId = this.generatePlayerId();
-                this.connectionStatus = 'online';
-                this.lastSync = 0;
-                this.retryCount = 0;
-                
-                this.loadFromStorage();
-            }
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <div>
+              <span class="status" id="statusLine">Ready</span>
+              <small class="muted"> • Autosave every 2 minutes • History: <span id="histCount">0</span></small>
+            </div>
+            <div>
+              <small class="muted">Last saved:</small>
+              <small id="lastSaved">Never</small>
+            </div>
+          </div>
 
-            generatePlayerId() {
-                return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-            }
+          <div class="hr"></div>
 
-            loadFromStorage() {
-                try {
-                    const saved = localStorage.getItem('infiniteCanvasState');
-                    if (saved) {
-                        const parsed = JSON.parse(saved);
-                        this.playerId = parsed.playerId || this.playerId;
-                    }
-                } catch (e) {
-                    console.warn('Could not load saved state');
-                }
-            }
+          <div class="info-box">
+            Tips: Use touch or mouse to draw. Enable encryption to protect the canvas with a passphrase — the passphrase remains only in your browser. For production-grade secret protection, host a server-side proxy so your API key stays secret.
+          </div>
+        </div>
+      </div>
 
-            saveToStorage() {
-                try {
-                    localStorage.setItem('infiniteCanvasState', JSON.stringify({
-                        playerId: this.playerId,
-                        lastTool: this.currentTool,
-                        lastColor: this.currentColor,
-                        lastBrushSize: this.brushSize
-                    }));
-                } catch (e) {
-                    console.warn('Could not save state');
-                }
-            }
+      <!-- About -->
+      <article id="about" class="page panel" aria-labelledby="about-title">
+        <h2 id="about-title">About InfiniteCanvas</h2>
+        <p><strong>InfiniteCanvas</strong> was created to give artists, designers, teams and educators an easy-to-use, privacy conscious drawing workspace — accessible on phones, tablets and desktops. Our design follows a classic, minimal aesthetic so tools are fast and recognizable.</p>
 
-            addDrawingAction(action) {
-                if (!Security.validateDrawingAction(action)) {
-                    console.warn('Invalid drawing action rejected');
-                    return false;
-                }
-                
-                action.id = this.generateActionId();
-                action.timestamp = Date.now();
-                action.playerId = this.playerId;
-                
-                this.canvasData.push(action);
-                this.history.push(JSON.parse(JSON.stringify(action)));
-                
-                if (this.history.length > CONFIG.MAX_HISTORY) {
-                    this.history.shift();
-                }
-                
-                return true;
-            }
+        <h3>Vision</h3>
+        <p>To empower creative people with a secure, reliable, and fast digital canvas that puts data control in the user's hands.</p>
 
-            generateActionId() {
-                return 'action_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            }
+        <h3>What makes us legitimate</h3>
+        <ul>
+          <li>Transparent saving using public cloud JSON storage (JSONBin)</li>
+          <li>Client-side encryption option (user-managed passphrase)</li>
+          <li>Clear legal, privacy and company pages (see Legal & Company)</li>
+          <li>Autosave, versioning, and undo/redo to avoid data loss</li>
+        </ul>
 
-            undo() {
-                if (this.history.length === 0) return null;
-                const lastAction = this.history.pop();
-                this.canvasData = this.canvasData.filter(action => action.id !== lastAction.id);
-                return lastAction;
-            }
+        <h3>Core Values</h3>
+        <ol>
+          <li>User control and privacy</li>
+          <li>Reliability and performance</li>
+          <li>Simple, inclusive design</li>
+        </ol>
+      </article>
 
-            clearCanvas() {
-                this.canvasData = [];
-                this.history = [];
-            }
+      <!-- Company -->
+      <article id="company" class="page panel" aria-labelledby="company-title">
+        <h2 id="company-title">Company</h2>
+        <div class="company-box">
+          <h3>InfiniteCanvas Inc.</h3>
+          <p><em>Founded:</em> 2025 • <em>Headquarters:</em> Remote • <em>Type:</em> Creative tools / SaaS (early stage)</p>
+
+          <div class="hr"></div>
+
+          <h4>Mission</h4>
+          <p>Deliver robust creative tooling that respects user privacy and scales with the user's needs.</p>
+
+          <h4>Team</h4>
+          <div class="team-grid">
+            <div><strong>Founder & CEO</strong><div class="small">Vision & product</div></div>
+            <div><strong>CTO</strong><div class="small">Architecture & security</div></div>
+            <div><strong>Design Lead</strong><div class="small">UI/UX & accessibility</div></div>
+            <div><strong>Community</strong><div class="small">Support & outreach</div></div>
+          </div>
+
+          <h4>Roadmap (high level)</h4>
+          <ul>
+            <li>Cross-device sync & collaboration</li>
+            <li>Secure server-side storage proxy (to hide keys)</li>
+            <li>Encrypted shared sessions and granular permissions</li>
+            <li>Integrations with educational & team tools</li>
+          </ul>
+
+          <h4>Investors & Partnerships</h4>
+          <p class="small">We are early-stage and open to partnerships with creative education platforms and cloud storage providers.</p>
+        </div>
+      </article>
+
+      <!-- Contact -->
+      <article id="contact" class="page panel" aria-labelledby="contact-title">
+        <h2 id="contact-title">Contact Us</h2>
+        <p>We welcome feedback, security reports, partnership requests and media inquiries.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 300px;gap:12px">
+          <div>
+            <form id="contactForm" onsubmit="submitContactForm(event)">
+              <div class="form-row">
+                <label class="small">Full name</label>
+                <input id="contactName" type="text" required maxlength="140" />
+              </div>
+              <div class="form-row">
+                <label class="small">Email</label>
+                <input id="contactEmail" type="email" required maxlength="140" />
+              </div>
+              <div class="form-row">
+                <label class="small">Subject</label>
+                <input id="contactSubject" type="text" required maxlength="200" />
+              </div>
+              <div class="form-row">
+                <label class="small">Message</label>
+                <textarea id="contactMessage" required maxlength="2000"></textarea>
+              </div>
+              <div class="form-row">
+                <small class="muted">We sanitize submissions and do not publish PII without consent.</small>
+              </div>
+              <div style="display:flex;gap:8px">
+                <input type="submit" value="Send" />
+                <button type="button" onclick="resetContact()">Reset</button>
+                <span id="contactStatus" class="small muted"></span>
+              </div>
+            </form>
+          </div>
+
+          <aside class="panel">
+            <h4>Contact Info</h4>
+            <p class="small"><strong>Email:</strong> handedakah@gmail.com<br/>
+               <strong>Address:</strong> 100 Creative Ave, Remote • Country: Global (remote-first)<br/>
+               <strong>Phone:</strong> +91 8103356828 (virtual)</p>
+
+            <div class="hr"></div>
+
+            <h4>Security & Responsible Disclosure</h4>
+            <p class="small">To report security issues, please email handedaksh@gmail.com with details and reproduction steps. We will acknowledge within 5 business days.</p>
+          </aside>
+        </div>
+      </article>
+
+      <!-- Legal -->
+      <article id="legal" class="page panel" aria-labelledby="legal-title">
+        <h2 id="legal-title">Legal & Policies</h2>
+
+        <h3>Terms of Service — Summary</h3>
+        <p class="small">By using InfiniteCanvas you agree not to upload content that violates laws or third-party rights. We are not responsible for content you save. We reserve the right to remove content that violates our policies.</p>
+
+        <h3>Privacy Policy — Summary</h3>
+        <p class="small">We store canvas data using JSONBin.io. If you enable client-side encryption, the passphrase remains local in your browser and is never sent to JSONBin. Contact info submitted through the form may be stored in the Bin for administrative purposes.</p>
+
+        <h3>Copyright & DMCA</h3>
+        <p class="small">© <strong>InfiniteCanvas</strong> — All rights reserved. If you are the copyright owner and believe content violates your rights, use our contact form to file a DMCA notice with sufficient identification.</p>
+
+        <h3>Security & API Keys</h3>
+        <p class="small">This demo uses a JSONBin API key embedded in the client. For production, do not embed master keys in a public file — use a server-side proxy. See our security page for details.</p>
+
+        <div class="hr"></div>
+        <h4>Quick links</h4>
+        <ul class="legal-list">
+          <li>Privacy policy (detailed)</li>
+          <li>Terms of Service (detailed)</li>
+          <li>Security policy</li>
+          <li>DMCA policy</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- Right column: meta / versions / credits -->
+    <aside>
+      <div class="panel">
+        <h3>Version & Status</h3>
+        <p class="small">App version: <span class="badge">1.0.0</span></p>
+        <p class="small">Autosave interval: <span id="autosaveInterval">120s</span></p>
+        <p class="small">History entries: <span id="histCountSide">0</span></p>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h3>Recent saves</h3>
+        <div id="recentSaves" class="small muted">No saves yet.</div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h3>Security Checklist</h3>
+        <ul class="small">
+          <li>Client-side encryption: <strong>Available</strong></li>
+          <li>Data hosted: JSONBin.io (user-provided bin)</li>
+          <li>API key in-page: <strong>Yes (you provided it)</strong></li>
+          <li>Recommended: Use server-side key proxy for highest security</li>
+        </ul>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h3>Credits</h3>
+        <p class="small">Built with plain HTML/CSS/JS. UI theme inspired by classic Windows 98/XP for familiarity.</p>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div>&copy; <span id="year"></span> InfiniteCanvas.org — All rights reserved • <small class="small">This page is a single-file demo. For a production deployment, move API keys server-side.</small></div>
+  </footer>
+</div>
+
+<script>
+/* ---------- Configuration (user-provided) ---------- */
+/* NOTE: you provided these values — they are used directly.
+   For production, host a server to avoid exposing API keys. */
+const JSONBIN_BIN_ID = '68e2b14443b1c97be95b6a72';
+const JSONBIN_API_KEY = '$2a$10$2tYG2Lo94Fz5p7yM/onTIuXig3E99LYF099QwCO/5zn8yzLOACQxe';
+const AUTOSAVE_INTERVAL_MS = 120000; // 2 minutes
+
+/* ---------- UI setup ---------- */
+document.getElementById('year').innerText = new Date().getFullYear();
+document.getElementById('autosaveInterval').innerText = (AUTOSAVE_INTERVAL_MS/1000) + 's';
+
+/* ---------- Canvas & Tools ---------- */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { willReadFrequently: false });
+let drawing=false, lastX=0, lastY=0;
+let brushSize = 4, brushAlpha = 1.0, brushColor = '#000';
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
+ctx.lineWidth = brushSize;
+ctx.strokeStyle = brushColor;
+ctx.globalAlpha = brushAlpha;
+
+// memory / history
+let history = []; // dataURL stack
+let redoStack = [];
+const HISTORY_LIMIT = 80;
+const STATUS = document.getElementById('statusLine');
+const lastSavedEl = document.getElementById('lastSaved');
+const recentSavesEl = document.getElementById('recentSaves');
+const histCountEls = [document.getElementById('histCount'), document.getElementById('histCountSide')];
+
+function updateHistCounters(){
+  histCountEls.forEach(e => e.innerText = history.length);
+}
+function pushHistory(){
+  try{
+    if(history.length >= HISTORY_LIMIT) history.shift();
+    history.push(canvas.toDataURL('image/png'));
+    redoStack = [];
+    updateHistCounters();
+  }catch(e){
+    console.warn('history push failed', e);
+  }
+}
+
+// drawing helpers (mouse + touch)
+function getPosFromEvent(e){
+  const rect = canvas.getBoundingClientRect();
+  if(e.touches && e.touches[0]) {
+    return {x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top};
+  } else if (e.changedTouches && e.changedTouches[0]) {
+    return {x: e.changedTouches[0].clientX - rect.left, y: e.changedTouches[0].clientY - rect.top};
+  } else {
+    return {x: e.offsetX, y: e.offsetY};
+  }
+}
+function startDraw(e){
+  drawing = true;
+  const p = getPosFromEvent(e);
+  lastX = p.x; lastY = p.y;
+  // begin a tiny path so that a tap still paints a dot
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  e.preventDefault();
+}
+function stopDraw(e){
+  if(drawing) pushHistory();
+  drawing = false;
+}
+function draw(e){
+  if(!drawing) return;
+  const p = getPosFromEvent(e);
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(p.x, p.y);
+  ctx.strokeStyle = brushColor;
+  ctx.lineWidth = brushSize;
+  ctx.globalAlpha = brushAlpha;
+  ctx.stroke();
+  lastX = p.x; lastY = p.y;
+  e.preventDefault();
+}
+// attach events
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', stopDraw);
+canvas.addEventListener('mouseout', stopDraw);
+canvas.addEventListener('touchstart', startDraw, {passive:false});
+canvas.addEventListener('touchmove', draw, {passive:false});
+canvas.addEventListener('touchend', stopDraw);
+
+// controls
+function changeBrush(v){ brushSize = Number(v); }
+function changeAlpha(v){ brushAlpha = Number(v); }
+function changeColor(v){ brushColor = v; }
+
+document.getElementById('brushSize').value = brushSize;
+document.getElementById('brushAlpha').value = brushAlpha;
+document.getElementById('brushColor').value = brushColor;
+
+/* ---------- Undo / Redo ---------- */
+function undoCanvas(){
+  if(history.length === 0) { STATUS.innerText = 'Nothing to undo'; return; }
+  redoStack.push(canvas.toDataURL());
+  const dataURL = history.pop();
+  const img = new Image();
+  img.onload = function(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); updateHistCounters();}
+  img.src = dataURL;
+}
+function redoCanvas(){
+  if(redoStack.length === 0) { STATUS.innerText = 'Nothing to redo'; return; }
+  history.push(canvas.toDataURL());
+  const dataURL = redoStack.pop();
+  const img = new Image();
+  img.onload = function(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); updateHistCounters();}
+  img.src = dataURL;
+}
+function clearCanvas(){
+  pushHistory();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  STATUS.innerText = 'Canvas cleared';
+}
+
+/* ---------- Simple client-side encryption helpers (Web Crypto) ---------- */
+/* Optional: user can check 'Encrypt saves' and provide a passphrase.
+   Implementation: PBKDF2 -> AES-GCM. The passphrase never leaves browser. */
+async function deriveKey(passphrase, saltHex){
+  const enc = new TextEncoder();
+  const passKey = await crypto.subtle.importKey('raw', enc.encode(passphrase), {name:'PBKDF2'}, false, ['deriveKey']);
+  const salt = hexToBytes(saltHex);
+  return crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt, iterations: 250000, hash:'SHA-256'},
+    passKey,
+    {name:'AES-GCM', length:256},
+    false,
+    ['encrypt','decrypt']
+  );
+}
+function bytesToHex(bytes){
+  return Array.from(new Uint8Array(bytes)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function hexToBytes(hex){
+  const bytes = new Uint8Array(hex.length/2);
+  for(let i=0;i<bytes.length;i++) bytes[i] = parseInt(hex.substr(i*2,2),16);
+  return bytes;
+}
+async function encryptData(plainText, passphrase){
+  const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV recommended for AES-GCM
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = bytesToHex(salt);
+  const key = await deriveKey(passphrase, saltHex);
+  const enc = new TextEncoder();
+  const cipher = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, enc.encode(plainText));
+  // return compound object with iv & salt as hex + ciphertext as base64
+  return {
+    iv: bytesToHex(iv),
+    salt: saltHex,
+    cipherB64: btoa(String.fromCharCode(...new Uint8Array(cipher)))
+  };
+}
+async function decryptData(obj, passphrase){
+  const {iv, salt, cipherB64} = obj;
+  const key = await deriveKey(passphrase, salt);
+  const cipherBytes = Uint8Array.from(atob(cipherB64), c=>c.charCodeAt(0));
+  const plainBuffer = await crypto.subtle.decrypt({name:'AES-GCM', iv:hexToBytes(iv)}, key, cipherBytes);
+  return new TextDecoder().decode(plainBuffer);
+}
+
+/* ---------- JSONBin integration ---------- */
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b/';
+let lastSaveTime = null;
+let recentSaves = [];
+
+// rate limiting simple guard
+let lastManualSaveAt = 0;
+const MANUAL_SAVE_COOLDOWN_MS = 5000; // 5s guard
+
+async function putToJsonBin(payloadObj){
+  // payloadObj should be JSON-serializable
+  const url = JSONBIN_BASE + JSONBIN_BIN_ID;
+  const headers = {
+    'Content-Type':'application/json',
+    'X-Master-Key': JSONBIN_API_KEY,
+    'X-Bin-Versioning': 'false' // we keep simple overwrites; we also maintain recent saves in local array
+  };
+  const res = await fetch(url, {method:'PUT', headers, body: JSON.stringify(payloadObj)});
+  if(!res.ok) throw new Error('JSONBin PUT failed: ' + res.status + ' ' + res.statusText);
+  const json = await res.json();
+  return json;
+}
+
+// sanitize simple text to remove scripts or tags
+function sanitizeText(s){
+  return String(s).replace(/[<>]/g,'').trim();
+}
+
+/* ---------- Save / Load ---------- */
+async function saveCanvasToBin({auto=false} = {}){
+  // auto: boolean; encryption depends on checkbox
+  try{
+    // autosave guard: do not autosave if nothing changed in last 20s (simple)
+    const now = Date.now();
+    if(auto && lastSaveTime && (now - lastSaveTime) < 20000) {
+      STATUS.innerText = 'Autosave: no recent changes';
+      return;
+    }
+
+    // get data and optionally encrypt
+    const dataURL = canvas.toDataURL('image/png', 0.92);
+    const record = {
+      timestamp: new Date().toISOString(),
+      meta: { auto },
+      canvasPlain: null,
+      canvasEncrypted: null
+    };
+
+    const encryptToggle = document.getElementById('encryptToggle').checked;
+    const pass = document.getElementById('encryptPass').value;
+
+    if(encryptToggle){
+      if(!pass || pass.length < 4){
+        STATUS.innerText = 'Encryption enabled — provide a passphrase (min 4 chars)';
+        return;
+      }
+      STATUS.innerText = (auto ? 'Autosaving (encrypted)...' : 'Saving (encrypted)...');
+      const encrypted = await encryptData(dataURL, pass); // returns {iv, salt, cipherB64}
+      record.canvasEncrypted = encrypted;
+    } else {
+      STATUS.innerText = (auto ? 'Autosaving...' : 'Saving...');
+      record.canvasPlain = dataURL;
+    }
+
+    // small metadata: dimensions + brush settings
+    record.meta.canvasWidth = canvas.width;
+    record.meta.canvasHeight = canvas.height;
+    record.meta.brush = { size: brushSize, color: brushColor, alpha: brushAlpha };
+
+    // last-resort: do not flood JSONBin: only allow manual saves every MANUAL_SAVE_COOLDOWN_MS
+    if(!auto){
+      if(now - lastManualSaveAt < MANUAL_SAVE_COOLDOWN_MS){
+        STATUS.innerText = 'Please wait a moment before saving again.';
+        return;
+      }
+      lastManualSaveAt = now;
+    }
+
+    const res = await putToJsonBin(record);
+    lastSaveTime = Date.now();
+    lastSavedEl.innerText = new Date().toLocaleString();
+    STATUS.innerText = 'Saved OK';
+    // update recent saves locally
+    recentSaves.unshift({time: new Date().toLocaleString(), auto, enc: !!record.canvasEncrypted});
+    if(recentSaves.length > 8) recentSaves.pop();
+    updateRecentSaves();
+
+  }catch(err){
+    console.error(err);
+    STATUS.innerText = 'Save failed: ' + (err.message || 'network');
+  }
+}
+async function manualSave(){ await saveCanvasToBin({auto:false}); }
+async function autosaveLoop(){
+  await saveCanvasToBin({auto:true});
+}
+setInterval(autosaveLoop, AUTOSAVE_INTERVAL_MS);
+
+/* ---------- Load latest from JSONBin ---------- */
+async function loadLatestFromBin(){
+  try{
+    const url = JSONBIN_BASE + JSONBIN_BIN_ID + '/latest';
+    const headers = {'X-Master-Key': JSONBIN_API_KEY};
+    const res = await fetch(url, {headers});
+    if(!res.ok) throw new Error('Load failed: ' + res.status);
+    const json = await res.json();
+    const rec = json && json.record;
+    if(!rec) { STATUS.innerText = 'No record found in Bin.'; return; }
+
+    if(rec.canvasPlain){
+      const img = new Image();
+      img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); STATUS.innerText = 'Loaded canvas (plain)'; };
+      img.src = rec.canvasPlain;
+      recentSaves.unshift({time: new Date(rec.timestamp).toLocaleString(), auto: rec.meta?.auto, enc:false});
+    } else if(rec.canvasEncrypted){
+      // need passphrase from user to decrypt
+      const encEnabled = document.getElementById('encryptToggle');
+      const passField = document.getElementById('encryptPass');
+      if(!passField.value){
+        STATUS.innerText = 'Latest save is encrypted — enter passphrase and click "Load (Decrypt)".';
+        // but leave record in recentSaves (encrypted)
+        recentSaves.unshift({time: new Date(rec.timestamp).toLocaleString(), auto: rec.meta?.auto, enc:true});
+      } else {
+        try{
+          STATUS.innerText = 'Decrypting...';
+          const decoded = await decryptData(rec.canvasEncrypted, passField.value);
+          const img = new Image();
+          img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); STATUS.innerText = 'Loaded canvas (decrypted)'; };
+          img.src = decoded;
+          recentSaves.unshift({time: new Date(rec.timestamp).toLocaleString(), auto: rec.meta?.auto, enc:true});
+        }catch(e){
+          console.error(e);
+          STATUS.innerText = 'Decrypt failed: wrong passphrase or data corrupted.';
         }
-
-        // API Service
-        class APIService {
-            constructor() {
-                this.rateLimit = { count: 0, resetTime: 0 };
-            }
-
-            async request(url, options = {}) {
-                // Rate limiting
-                const now = Date.now();
-                if (now > this.rateLimit.resetTime) {
-                    this.rateLimit = { count: 0, resetTime: now + 60000 };
-                }
-                if (this.rateLimit.count >= 10) {
-                    throw new Error('Rate limit exceeded');
-                }
-                this.rateLimit.count++;
-
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                
-                try {
-                    const response = await fetch(url, {
-                        ...options,
-                        signal: controller.signal,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Master-Key': CONFIG.API_KEY,
-                            ...options.headers
-                        }
-                    });
-                    
-                    clearTimeout(timeoutId);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    
-                    return await response.json();
-                } catch (error) {
-                    clearTimeout(timeoutId);
-                    throw error;
-                }
-            }
-
-            async loadCanvasData() {
-                try {
-                    const data = await this.request(`${CONFIG.API_URL}/${CONFIG.BIN_ID}/latest`);
-                    return data.record || { canvasData: [] };
-                } catch (error) {
-                    console.error('Failed to load canvas data:', error);
-                    return { canvasData: [] };
-                }
-            }
-
-            async saveCanvasData(data) {
-                try {
-                    const sanitizedData = {
-                        canvasData: data.canvasData.filter(action => 
-                            Security.validateDrawingAction(action)
-                        ),
-                        playerCount: Math.max(1, parseInt(data.playerCount) || 1),
-                        lastUpdated: new Date().toISOString(),
-                        version: '2.0'
-                    };
-
-                    if (sanitizedData.canvasData.length > 1000) {
-                        sanitizedData.canvasData = sanitizedData.canvasData.slice(-1000);
-                    }
-
-                    const result = await this.request(`${CONFIG.API_URL}/${CONFIG.BIN_ID}`, {
-                        method: 'PUT',
-                        body: JSON.stringify(sanitizedData)
-                    });
-                    
-                    return result;
-                } catch (error) {
-                    console.error('Save failed:', error);
-                    throw error;
-                }
-            }
-        }
-
-        // Drawing Engine
-        class DrawingEngine {
-            constructor(canvas) {
-                this.canvas = canvas;
-                this.ctx = canvas.getContext('2d');
-                this.setupCanvas();
-            }
-
-            setupCanvas() {
-                const dpr = window.devicePixelRatio || 1;
-                const rect = this.canvas.getBoundingClientRect();
-                
-                this.canvas.width = rect.width * dpr;
-                this.canvas.height = rect.height * dpr;
-                
-                this.ctx.scale(dpr, dpr);
-                this.ctx.lineJoin = 'round';
-                this.ctx.lineCap = 'round';
-                this.ctx.lineWidth = appState.brushSize;
-                this.ctx.strokeStyle = appState.currentColor;
-                
-                this.canvas.style.width = rect.width + 'px';
-                this.canvas.style.height = rect.height + 'px';
-            }
-
-            resize() {
-                this.setupCanvas();
-                this.redraw();
-            }
-
-            redraw() {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                
-                appState.canvasData.forEach(action => {
-                    if (!Security.validateDrawingAction(action)) return;
-                    
-                    this.ctx.save();
-                    
-                    if (action.type === 'draw') {
-                        this.ctx.strokeStyle = action.color;
-                        this.ctx.lineWidth = action.size;
-                        this.ctx.globalCompositeOperation = 'source-over';
-                        
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(action.from.x, action.from.y);
-                        this.ctx.lineTo(action.to.x, action.to.y);
-                        this.ctx.stroke();
-                    } else if (action.type === 'erase') {
-                        this.ctx.globalCompositeOperation = 'destination-out';
-                        this.ctx.clearRect(
-                            action.x - action.size/2, 
-                            action.y - action.size/2, 
-                            action.size, 
-                            action.size
-                        );
-                    }
-                    
-                    this.ctx.restore();
-                });
-            }
-        }
-
-        // UI Manager
-        class UIManager {
-            constructor() {
-                this.toastContainer = document.getElementById('toast-container');
-                this.modalBackdrop = document.getElementById('modal-backdrop');
-                this.setupEventListeners();
-            }
-
-            setupEventListeners() {
-                // Navigation
-                document.querySelectorAll('.nav-link').forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        this.showPage(link.getAttribute('data-page'));
-                    });
-                });
-
-                // Home page buttons
-                document.getElementById('start-playing-btn').addEventListener('click', () => {
-                    this.showPage('play');
-                });
-
-                document.getElementById('view-gallery-btn').addEventListener('click', () => {
-                    this.showPage('gallery');
-                    this.loadGallery();
-                });
-
-                // Tool buttons
-                ['pencil', 'brush', 'eraser', 'line', 'rectangle', 'circle'].forEach(tool => {
-                    document.getElementById(`${tool}-tool`).addEventListener('click', () => {
-                        this.setTool(tool);
-                    });
-                });
-
-                // Color options
-                document.querySelectorAll('.color-option').forEach(option => {
-                    option.addEventListener('click', () => {
-                        const color = option.getAttribute('data-color');
-                        this.setColor(color);
-                        document.querySelectorAll('.color-option').forEach(opt => 
-                            opt.classList.remove('active')
-                        );
-                        option.classList.add('active');
-                    });
-                });
-
-                // Color picker
-                document.getElementById('color-picker').addEventListener('input', (e) => {
-                    this.setColor(e.target.value);
-                });
-
-                // Brush size
-                document.getElementById('brush-size').addEventListener('input', (e) => {
-                    this.setBrushSize(parseInt(e.target.value));
-                });
-
-                // Action buttons
-                document.getElementById('clear-btn').addEventListener('click', () => {
-                    this.clearCanvas();
-                });
-
-                document.getElementById('save-btn').addEventListener('click', () => {
-                    this.saveDrawing();
-                });
-
-                document.getElementById('undo-btn').addEventListener('click', () => {
-                    this.undo();
-                });
-
-                // Modal
-                document.getElementById('modal-close').addEventListener('click', () => {
-                    this.hideModal();
-                });
-
-                this.modalBackdrop.addEventListener('click', (e) => {
-                    if (e.target === this.modalBackdrop) {
-                        this.hideModal();
-                    }
-                });
-
-                // Window controls
-                document.getElementById('fullscreen-canvas').addEventListener('click', () => {
-                    this.toggleFullscreen();
-                });
-
-                // Gallery controls
-                document.getElementById('refresh-gallery').addEventListener('click', () => {
-                    this.loadGallery();
-                });
-
-                // Contact form
-                document.getElementById('contact-form').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.handleContactSubmit();
-                });
-
-                // Window resize
-                window.addEventListener('resize', () => {
-                    if (appState.currentPage === 'play') {
-                        setTimeout(() => drawingEngine.resize(), 100);
-                    }
-                });
-            }
-
-            showPage(pageName) {
-                document.querySelectorAll('.page').forEach(page => {
-                    page.classList.remove('active');
-                });
-                const targetPage = document.getElementById(`${pageName}-page`);
-                if (targetPage) {
-                    targetPage.classList.add('active');
-                    appState.currentPage = pageName;
-                    
-                    if (pageName === 'play') {
-                        setTimeout(() => drawingEngine.resize(), 100);
-                    }
-                }
-            }
-
-            setTool(tool) {
-                appState.currentTool = tool;
-                
-                document.querySelectorAll('#toolbar .win-button').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                document.getElementById(`${tool}-tool`).classList.add('active');
-                
-                const canvas = document.getElementById('drawing-canvas');
-                canvas.className = '';
-                if (tool === 'eraser') {
-                    canvas.classList.add('eraser-cursor');
-                    drawingEngine.ctx.globalCompositeOperation = 'destination-out';
-                } else {
-                    canvas.classList.add('drawing-cursor');
-                    drawingEngine.ctx.globalCompositeOperation = 'source-over';
-                    drawingEngine.ctx.strokeStyle = appState.currentColor;
-                }
-            }
-
-            setColor(color) {
-                appState.currentColor = color;
-                drawingEngine.ctx.strokeStyle = color;
-                document.getElementById('color-picker').value = color;
-            }
-
-            setBrushSize(size) {
-                appState.brushSize = size;
-                drawingEngine.ctx.lineWidth = size;
-                document.getElementById('brush-size-value').textContent = size;
-            }
-
-            clearCanvas() {
-                if (confirm('Are you sure you want to clear the canvas? This will clear for all users.')) {
-                    appState.clearCanvas();
-                    drawingEngine.redraw();
-                    syncManager.forceSync();
-                    this.showToast('Canvas cleared', 'success');
-                }
-            }
-
-            async saveDrawing() {
-                try {
-                    const dataURL = drawingEngine.canvas.toDataURL('image/png');
-                    const link = document.createElement('a');
-                    link.download = `infinite-canvas-${Date.now()}.png`;
-                    link.href = dataURL;
-                    link.click();
-                    this.showToast('Drawing saved successfully!', 'success');
-                } catch (error) {
-                    this.showToast('Failed to save drawing', 'error');
-                }
-            }
-
-            undo() {
-                const action = appState.undo();
-                if (action) {
-                    drawingEngine.redraw();
-                    syncManager.forceSync();
-                    this.showToast('Action undone', 'info');
-                } else {
-                    this.showToast('Nothing to undo', 'info');
-                }
-            }
-
-            showToast(message, type = 'info') {
-                const toast = document.createElement('div');
-                toast.className = `toast ${type}`;
-                toast.textContent = message;
-                
-                this.toastContainer.appendChild(toast);
-                
-                setTimeout(() => {
-                    if (toast.parentNode) {
-                        toast.parentNode.removeChild(toast);
-                    }
-                }, 3000);
-            }
-
-            showModal(title, content) {
-                document.getElementById('modal-title').textContent = title;
-                document.getElementById('modal-content').innerHTML = content;
-                this.modalBackdrop.classList.add('active');
-            }
-
-            hideModal() {
-                this.modalBackdrop.classList.remove('active');
-            }
-
-            updateConnectionStatus(status) {
-                const indicator = document.getElementById('sync-status');
-                if (!indicator) return;
-                
-                indicator.className = `status-indicator status-${status}`;
-                
-                switch (status) {
-                    case 'online':
-                        indicator.innerHTML = '<span class="loading"></span> Syncing...';
-                        break;
-                    case 'offline':
-                        indicator.textContent = 'Offline';
-                        break;
-                    case 'error':
-                        indicator.textContent = 'Sync Error';
-                        break;
-                }
-            }
-
-            toggleFullscreen() {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        this.showToast('Fullscreen failed: ' + err.message, 'error');
-                    });
-                } else {
-                    document.exitFullscreen();
-                }
-            }
-
-            loadGallery() {
-                const galleryGrid = document.getElementById('gallery-grid');
-                galleryGrid.innerHTML = `
-                    <div class="gallery-item">
-                        <div style="background: #f0f0f0; height: 150px; display: flex; align-items: center; justify-content: center;">
-                            Gallery feature coming soon!
-                        </div>
-                    </div>
-                `;
-            }
-
-            handleContactSubmit() {
-                const name = Security.sanitizeInput(document.getElementById('contact-name').value);
-                const email = Security.sanitizeInput(document.getElementById('contact-email').value);
-                const message = Security.sanitizeInput(document.getElementById('contact-message').value);
-                
-                if (!name || !email || !message) {
-                    this.showToast('Please fill in all fields', 'error');
-                    return;
-                }
-                
-                this.showToast('Thank you for your message! We\'ll get back to you soon.', 'success');
-                document.getElementById('contact-form').reset();
-            }
-
-            updatePlayerCount() {
-                const countElement = document.getElementById('player-count');
-                if (countElement) {
-                    // Simulate player count changes
-                    const baseCount = 1;
-                    const randomVariation = Math.floor(Math.random() * 5);
-                    countElement.textContent = baseCount + randomVariation;
-                }
-            }
-        }
-
-        // Sync Manager
-        class SyncManager {
-            constructor() {
-                this.isSyncing = false;
-                this.lastDataHash = '';
-            }
-
-            async sync() {
-                if (this.isSyncing) return;
-                
-                this.isSyncing = true;
-                uiManager.updateConnectionStatus('online');
-                
-                try {
-                    // Load remote data
-                    const remoteData = await apiService.loadCanvasData();
-                    await this.mergeData(remoteData);
-                    
-                    // Save local changes
-                    await this.saveLocalChanges();
-                    
-                    appState.retryCount = 0;
-                    appState.lastSync = Date.now();
-                    
-                } catch (error) {
-                    console.error('Sync failed:', error);
-                    appState.retryCount++;
-                    
-                    if (appState.retryCount >= CONFIG.MAX_RETRIES) {
-                        uiManager.updateConnectionStatus('offline');
-                        uiManager.showToast('Connection lost. Working offline.', 'error');
-                    } else {
-                        uiManager.updateConnectionStatus('error');
-                        setTimeout(() => this.sync(), CONFIG.RETRY_DELAY);
-                    }
-                } finally {
-                    this.isSyncing = false;
-                }
-            }
-
-            async mergeData(remoteData) {
-                if (!remoteData.canvasData) return;
-                
-                const remoteHash = JSON.stringify(remoteData.canvasData).length.toString();
-                if (remoteHash === this.lastDataHash) return;
-                
-                let hasChanges = false;
-                const mergedData = [...appState.canvasData];
-                
-                for (const remoteAction of remoteData.canvasData) {
-                    if (!Security.validateDrawingAction(remoteAction)) continue;
-                    
-                    const existingIndex = mergedData.findIndex(a => a.id === remoteAction.id);
-                    
-                    if (existingIndex === -1) {
-                        mergedData.push(remoteAction);
-                        hasChanges = true;
-                    } else if (remoteAction.timestamp > mergedData[existingIndex].timestamp) {
-                        mergedData[existingIndex] = remoteAction;
-                        hasChanges = true;
-                    }
-                }
-                
-                if (hasChanges) {
-                    appState.canvasData = mergedData.sort((a, b) => a.timestamp - b.timestamp);
-                    drawingEngine.redraw();
-                    this.lastDataHash = remoteHash;
-                }
-            }
-
-            async saveLocalChanges() {
-                const dataToSave = {
-                    canvasData: appState.canvasData,
-                    playerCount: parseInt(document.getElementById('player-count')?.textContent || '1'),
-                    lastUpdated: new Date().toISOString()
-                };
-                
-                await apiService.saveCanvasData(dataToSave);
-            }
-
-            forceSync() {
-                this.sync();
-            }
-
-            startAutoSync() {
-                setInterval(() => this.sync(), CONFIG.UPDATE_INTERVAL);
-                
-                document.addEventListener('visibilitychange', () => {
-                    if (!document.hidden) {
-                        this.sync();
-                    }
-                });
-            }
-        }
-
-        // Drawing Handlers
-        class DrawingHandlers {
-            constructor() {
-                this.canvas = document.getElementById('drawing-canvas');
-                this.setupEventListeners();
-            }
-
-            setupEventListeners() {
-                this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
-                this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
-                this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
-                this.canvas.addEventListener('mouseout', this.handleMouseUp.bind(this));
-                
-                this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this));
-                this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this));
-                this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
-                
-                this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-            }
-
-            getCanvasCoordinates(e) {
-                const rect = this.canvas.getBoundingClientRect();
-                const dpr = window.devicePixelRatio || 1;
-                
-                let clientX, clientY;
-                
-                if (e.type.includes('touch')) {
-                    clientX = e.touches[0].clientX;
-                    clientY = e.touches[0].clientY;
-                } else {
-                    clientX = e.clientX;
-                    clientY = e.clientY;
-                }
-                
-                return {
-                    x: (clientX - rect.left) * (this.canvas.width / rect.width / dpr),
-                    y: (clientY - rect.top) * (this.canvas.height / rect.height / dpr)
-                };
-            }
-
-            handleMouseDown(e) {
-                e.preventDefault();
-                this.startDrawing(e);
-            }
-
-            handleTouchStart(e) {
-                e.preventDefault();
-                this.startDrawing(e);
-            }
-
-            startDrawing(e) {
-                const pos = this.getCanvasCoordinates(e);
-                appState.drawing = true;
-                [appState.startX, appState.startY] = [pos.x, pos.y];
-                [appState.lastX, appState.lastY] = [pos.x, pos.y];
-                
-                if (appState.currentTool === 'pencil' || appState.currentTool === 'brush') {
-                    drawingEngine.ctx.beginPath();
-                    drawingEngine.ctx.moveTo(pos.x, pos.y);
-                }
-            }
-
-            handleMouseMove(e) {
-                if (!appState.drawing) return;
-                e.preventDefault();
-                this.draw(e);
-            }
-
-            handleTouchMove(e) {
-                if (!appState.drawing) return;
-                e.preventDefault();
-                this.draw(e);
-            }
-
-            draw(e) {
-                const pos = this.getCanvasCoordinates(e);
-                const currentX = pos.x;
-                const currentY = pos.y;
-                
-                let action = null;
-                
-                if (appState.currentTool === 'pencil' || appState.currentTool === 'brush') {
-                    drawingEngine.ctx.lineTo(currentX, currentY);
-                    drawingEngine.ctx.stroke();
-                    
-                    action = {
-                        type: 'draw',
-                        tool: appState.currentTool,
-                        color: appState.currentColor,
-                        size: appState.brushSize,
-                        from: { x: appState.lastX, y: appState.lastY },
-                        to: { x: currentX, y: currentY }
-                    };
-                } else if (appState.currentTool === 'eraser') {
-                    drawingEngine.ctx.clearRect(
-                        currentX - appState.brushSize/2, 
-                        currentY - appState.brushSize/2, 
-                        appState.brushSize, 
-                        appState.brushSize
-                    );
-                    
-                    action = {
-                        type: 'erase',
-                        x: currentX,
-                        y: currentY,
-                        size: appState.brushSize
-                    };
-                }
-                
-                if (action && appState.addDrawingAction(action)) {
-                    [appState.lastX, appState.lastY] = [currentX, currentY];
-                }
-            }
-
-            handleMouseUp() {
-                this.finishDrawing();
-            }
-
-            handleTouchEnd() {
-                this.finishDrawing();
-            }
-
-            finishDrawing() {
-                if (!appState.drawing) return;
-                
-                appState.drawing = false;
-                drawingEngine.ctx.beginPath();
-                
-                setTimeout(() => syncManager.forceSync(), 100);
-            }
-        }
-
-        // Global instances
-        let appState, apiService, drawingEngine, uiManager, syncManager, drawingHandlers;
-
-        // Initialize application
-        document.addEventListener('DOMContentLoaded', function() {
-            try {
-                // Initialize core systems
-                appState = new AppState();
-                apiService = new APIService();
-                
-                const canvas = document.getElementById('drawing-canvas');
-                if (!canvas) throw new Error('Canvas element not found');
-                
-                drawingEngine = new DrawingEngine(canvas);
-                uiManager = new UIManager();
-                syncManager = new SyncManager();
-                drawingHandlers = new DrawingHandlers();
-                
-                // Load initial data and start syncing
-                setTimeout(() => {
-                    syncManager.sync();
-                    syncManager.startAutoSync();
-                }, 1000);
-                
-                // Start UI updates
-                setInterval(() => {
-                    uiManager.updatePlayerCount();
-                    appState.saveToStorage();
-                }, 5000);
-                
-                console.log('Infinite Canvas initialized successfully');
-                
-            } catch (error) {
-                console.error('Failed to initialize application:', error);
-                if (uiManager) {
-                    uiManager.showToast('Failed to initialize. Please refresh.', 'error');
-                }
-            }
-        });
-
-        // Global error handling
-        window.addEventListener('error', function(e) {
-            console.error('Global error:', e.error);
-            if (uiManager) {
-                uiManager.showToast('An error occurred', 'error');
-            }
-        });
-
-        window.addEventListener('unhandledrejection', function(e) {
-            console.error('Unhandled promise rejection:', e.reason);
-            if (uiManager) {
-                uiManager.showToast('A network error occurred', 'error');
-            }
-        });
-    </script>
+      }
+    } else {
+      STATUS.innerText = 'No canvas data in latest bin record.';
+    }
+    if(recentSaves.length>8) recentSaves = recentSaves.slice(0,8);
+    updateRecentSaves();
+  }catch(err){
+    console.warn('Load error', err);
+    // do not spam text
+  }
+}
+async function tryLoadLatestSilently(){ await loadLatestFromBin(); }
+tryLoadLatestSilently();
+
+/* ---------- Utility UI ---------- */
+function updateRecentSaves(){
+  if(recentSaves.length===0){ recentSavesEl.innerText = 'No saves yet.'; return; }
+  recentSavesEl.innerHTML = recentSaves.map(r => `<div>${r.time} ${r.enc?'<strong>(encrypted)</strong>':''} ${r.auto?'<em>(auto)</em>':''}</div>`).join('');
+}
+updateRecentSaves();
+
+/* ---------- Contact form handling (sanitized) ---------- */
+async function submitContactForm(e){
+  e.preventDefault();
+  const name = sanitizeText(document.getElementById('contactName').value);
+  const email = sanitizeText(document.getElementById('contactEmail').value);
+  const subject = sanitizeText(document.getElementById('contactSubject').value);
+  const message = sanitizeText(document.getElementById('contactMessage').value);
+
+  if(!name || !email || !message){ document.getElementById('contactStatus').innerText='Please fill required fields.'; return; }
+
+  // store to JSONBin as a contact record (append-like by writing latest with messages array)
+  try{
+    // first fetch latest record, then append contact
+    const fetchUrl = JSONBIN_BASE + JSONBIN_BIN_ID + '/latest';
+    const fetchRes = await fetch(fetchUrl, {headers:{'X-Master-Key': JSONBIN_API_KEY}});
+    if(!fetchRes.ok) throw new Error('Cannot fetch bin for contact append');
+    const json = await fetchRes.json();
+    const record = json.record || {};
+    record.contacts = record.contacts || [];
+    record.contacts.push({name,email,subject,message,timestamp:new Date().toISOString()});
+    // write back
+    await putToJsonBin(record);
+    document.getElementById('contactStatus').innerText = 'Message sent — thank you.';
+    document.getElementById('contactForm').reset();
+  }catch(err){
+    console.error(err);
+    document.getElementById('contactStatus').innerText = 'Send failed.';
+  }
+}
+function resetContact(){ document.getElementById('contactForm').reset(); document.getElementById('contactStatus').innerText=''; }
+
+/* ---------- Page navigation ---------- */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const el = document.getElementById(id);
+  if(el) el.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* ---------- Keyboard shortcuts ---------- */
+window.addEventListener('keydown', (e)=>{
+  if(e.ctrlKey && e.key === 'z') { e.preventDefault(); undoCanvas(); }
+  if(e.ctrlKey && e.key === 'y') { e.preventDefault(); redoCanvas(); }
+  if(e.key === 's' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); manualSave(); }
+});
+
+/* ---------- Initial seed history & settings ---------- */
+(function init(){
+  // fill canvas white background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  pushHistory(); // initial state
+  updateHistCounters();
+  // load any existing latest record (no blocking)
+  setTimeout(tryLoadLatestSilently, 1000);
+})();
+
+/* ---------- Expose some functions for UI debugging (optional) ---------- */
+window.saveCanvasToBin = saveCanvasToBin;
+window.manualSave = manualSave;
+window.loadLatestFromBin = loadLatestFromBin;
+
+</script>
 </body>
 </html>
